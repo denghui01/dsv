@@ -1,0 +1,37 @@
+[
+    {
+        "name": "/SYS/TIME/UTC",
+        "type": "uint32",
+        "value": 0,
+        "tags": "sys.cfg",
+        "description": "system UTC time"
+    },
+    {
+        "name": "/SYS/NET1/NAME",
+        "type": "string",
+        "value": "eth1",
+        "tags": "sys.sts",
+        "description": "network interface #1 name"
+    },
+    {
+        "name": "/SYS/NET1/IP",
+        "type": "uint32",
+        "value": 255,
+        "tags": "sys.cfg",
+        "description": "network interface #1 IP address"
+    },
+    {
+        "name": "/SYS/ENV/VARS",
+        "type": "string",
+        "value": "",
+        "tags": "sys.sts",
+        "description": "system environment variables"
+    },
+    {
+        "name": "/SYS/SW/MAJ_VER",
+        "type": "uint8",
+        "value": 1,
+        "tags": "sys.sts",
+        "description": "software major version"
+    }
+]

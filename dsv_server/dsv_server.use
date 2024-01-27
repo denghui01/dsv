@@ -1,0 +1,64 @@
+    usage: SysVarServer [-c (c|u|l)[d|s] O ][-D][-H][-P][-T]
+
+    The SysVarServer process manages the storage for all application
+    specific variables within the system.
+
+    This command takes no arguments, and does not return.  It persists
+    as a process to manage system variable API requests.
+
+    Only one SysVarServer should be present in the system at any time.
+
+    The SysVarServer provides support for the following primitive
+    data types:
+
+        sint8 - signed 8 bit integer
+        uint8 - unsigned 8 bit integer
+        sint16 - signed 16 bit integer
+        uint16 - unsigned 16 bit integer
+        sint32 - signed 32 bit integer
+        uint32 - unigned 32 bit integer
+        sint64 - signed 64 bit integer
+        uint64 - unigned 64 bit integer
+        float - single precision floating point
+        str - null terminated character srings of arbitrary length.
+
+    The SysVarServer provides support for
+
+        - Notification on system variable change via a pulse
+        - Dynamic rendering of system variable content by either the system
+          variable owner or a third party.
+        - multiple instanciation of a system variable or group of system
+          variables
+        - fast access to system variables by name
+        - fast access to system variables by 32-bit globally unique identifier
+          and instance identifier
+        - fast access to system variables by handle
+        - dynamic creation of system variables at run-time
+        - read-only system variables
+        - protected system variables (write once)
+        - hidden system variables
+        - password system variables
+
+    The SysVarServer is intended only to be accessed via the sysvar
+    library (-lsysvar).  The sysvar library runs in the callers task
+    context and communicates with the SysVarServer via a private
+    messaging API. Third-party clients MUST NOT access the SysVarServer
+    directly.
+
+    The SysvarServer can convert the case of any system variable names
+    and search terms. By default it will act in case-insensitive way.
+
+    -cu = convert to upper case
+    -cl = convert to lower case
+    -cc = convert to camel case
+    -cd = convert dots to slashes
+    -cs - convert slashes to dots
+
+    The u,l,and c options are mutually exclusive, but the -d and -s options
+    may be combined with any of them.
+
+    The -O option makes it possible to override all the unspecified permissions
+    for system variables to default permission.
+
+    The -P option makes it possible to ignore proxy flag checking.
+    The -T option makes it possible to change the timestamp only on-change.

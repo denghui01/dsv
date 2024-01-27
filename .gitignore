@@ -1,32 +1,12 @@
-# Prerequisites
-*.d
-
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
-*.exe
-*.out
-*.app
+.vscode/
+cjson/
+dsv.vpj
+dsv.vpw
+dsv.vpwhistu
+dsv.vpwwildcardcache
+dsv.vtg
+dsv/build/
+dsv_server/build/
+dsv_server/doc/
+lib_dsv/build/
+lib_dsv/doc/
