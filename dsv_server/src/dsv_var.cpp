@@ -29,13 +29,18 @@ SOFTWARE.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <search.h>
 #include <syslog.h>
 #include <assert.h>
 #include <errno.h>
+#include <unordered_map>
+#include <string>
+#include <sstream>
 #include "zmq.h"
 #include "dsv.h"
 #include "dsv_msg.h"
+
+/*! hasp table to hold the dsv name and dsv info data */
+std::unordered_map<std::string, void *> g_map;
 
 /*==============================================================================
                               Defines
@@ -90,9 +95,8 @@ int var_create( const char *req_buf, char *fwd_buf )
     char *req_data = req->data;
 
     /* full_name and dsv will be put into hash table */
-    char *full_name = (char *)malloc( DSV_STRING_SIZE_MAX );
     dsv_info_t *dsv = (dsv_info_t *)malloc( sizeof(dsv_info_t) );
-    if( dsv != NULL && full_name != NULL )
+    if( dsv != NULL )
     {
         /* fill dsv */
         memcpy(dsv, req_data, sizeof(dsv_info_t));
@@ -114,37 +118,24 @@ int var_create( const char *req_buf, char *fwd_buf )
             dsv->value.pData = strdup( req_data );
         }
 
-        snprintf( full_name, DSV_STRING_SIZE_MAX, "[%d]%s", req->instID, dsv->pName);
-        ENTRY e;
-        ENTRY *ep;
-        e.key = full_name;
-        ep = hsearch( e, FIND );
-        if( ep == NULL )
+        std::stringstream ss;
+        ss << "[" << req->instID << "]" << dsv->pName;
+        std::string full_name = ss.str();
+        auto e = g_map.find(full_name);
+        if ( e == g_map.end() )
         {
-            e.data = (void *)dsv;
-            //DSV_Print( dsv );
-
-            ep = hsearch( e, ENTER );
-            if( ep == NULL )
-            {
-                syslog( LOG_ERR, "Failed to add entry to hash table: %s", full_name );
-                rc = EFAULT;
-            }
-            else
-            {
-                fill_fwd_buf( full_name, dsv, fwd_buf );
-            }
+            g_map.insert(std::make_pair(full_name, (void *)dsv));
+            fill_fwd_buf( full_name.c_str(), dsv, fwd_buf );
         }
         else
         {
-            syslog( LOG_ERR, "dsv existed: %s", full_name );
+            syslog( LOG_ERR, "dsv existed: %s", full_name.c_str() );
             rc = EEXIST;
         }
     }
 
     if( rc != 0 )
     {
-        free( full_name );
         free( dsv->pName);
         free( dsv->pDesc);
         free( dsv->pTags);
@@ -230,21 +221,19 @@ int var_get_handle( const char *req_buf, char *rep_buf )
     char *rep_data = rep->data;
     rep->length = sizeof(dsv_msg_reply_t);
 
-    char full_name[DSV_STRING_SIZE_MAX];
-    snprintf(full_name, sizeof(full_name), "[%d]%s", req->instID, req_data);
-    ENTRY e;
-    ENTRY *ep;
-    e.key = full_name;
-    ep = hsearch( e, FIND );
-    if( ep == NULL )
+    std::stringstream ss;
+    ss << "[" << req->instID << "]" << req_data;
+    std::string full_name = ss.str();
+    auto e = g_map.find(full_name);
+    if ( e == g_map.end() )
     {
-        printf("Unable to find the sysvar %s\n", full_name);
+        printf("Unable to find the sysvar %s\n", full_name.c_str());
         rc = EINVAL;
         rep->result = rc;
     }
     else
     {
-        *(void **)rep_data = (void *)ep->data;
+        *(void **)rep_data = e->second;
         rc = 0;
         rep->result = rc;
         rep->length += sizeof(void *);
@@ -339,38 +328,33 @@ int var_notify( char *sub_buf, char *fwd_buf )
 
     /* byte 0 is the subscription flag */
     char sub_flag = sub_buf[0];
-    char *full_name = &sub_buf[1];
+
     dsv_msg_forward_t *fwd = (dsv_msg_forward_t *)fwd_buf;
     char *fwd_data = fwd->data;
     fwd->length = 0;
     int rc = EINVAL;
-    ENTRY e;
-    ENTRY *ep;
-    if( sub_flag == 1 )
+
+    std::string full_name( &sub_buf[1] );
+    auto e = g_map.find(full_name);
+    if ( e != g_map.end() )
     {
-        e.key = full_name;
-        ep = hsearch( e, FIND );
-        printf( "Search %s, ep=0x%p\n", full_name, ep );
-        if( ep != NULL )
+        dsv_info_t *pDsv = (dsv_info_t *)e->second;
+        printf( "Subscribe %s\n", full_name.c_str() );
+        strcpy( fwd_data, full_name.c_str() );
+        fwd->length += full_name.length() + 1;
+        if( pDsv->type == DSV_TYPE_STR )
         {
-            dsv_info_t *pDsv = (dsv_info_t *)ep->data;
-            printf( "Subscribe %s\n", full_name );
-            strcpy( fwd_data, full_name );
-            fwd->length += strlen(full_name) + 1;
-            if( pDsv->type == DSV_TYPE_STR )
-            {
-                printf("data=%s\n", pDsv->value.pData);
-                strcpy( fwd_data + fwd->length, pDsv->value.pData );
-                fwd->length += strlen(pDsv->value.pData) + 1;
-            }
-            else
-            {
-                memcpy( fwd_data + fwd->length, &pDsv->value, sizeof(dsv_value_t) );
-                fwd->length += sizeof(dsv_value_t);
-            }
-            rc = 0;
+            strcpy( fwd_data + fwd->length, pDsv->value.pData );
+            fwd->length += strlen(pDsv->value.pData) + 1;
         }
+        else
+        {
+            memcpy( fwd_data + fwd->length, &pDsv->value, sizeof(dsv_value_t) );
+            fwd->length += sizeof(dsv_value_t);
+        }
+        rc = 0;
     }
+
     return rc;
 }
 

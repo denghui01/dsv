@@ -833,8 +833,8 @@ void * DSV_Open( void )
         syslog( LOG_ERR, "Failed to call zmq_connect: %s", strerror(errno) );
         goto error;
     }
-    /*now just wait for publish connected to endpoint */
-    usleep(5000);
+    /*now just wait 100ms for publish connected to endpoint */
+    usleep(100000);
 
     /* subscribe socket */
     ctx->sock_subscribe = zmq_socket( ctx->zmq_ctx, ZMQ_SUB );
