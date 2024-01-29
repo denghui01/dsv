@@ -229,13 +229,11 @@ int var_get_handle( const char *req_buf, char *rep_buf )
     {
         printf("Unable to find the sysvar %s\n", full_name.c_str());
         rc = EINVAL;
-        rep->result = rc;
     }
     else
     {
         *(void **)rep_data = e->second;
         rc = 0;
-        rep->result = rc;
         rep->length += sizeof(void *);
     }
     return rc;
@@ -270,13 +268,11 @@ int var_get_type( const char *req_buf, char *rep_buf )
     {
         *(int *)rep_data = pDsv->type;
         rc = 0;
-        rep->result = rc;
         rep->length += sizeof(int);
     }
     else
     {
         rc = EINVAL;
-        rep->result = rc;
     }
     return rc;
 }
@@ -310,15 +306,59 @@ int var_get( const char *req_buf, char *rep_buf )
             rep->length += sizeof(dsv_value_t);
         }
         rc = 0;
-        rep->result = rc;
     }
     else
     {
         rc = EINVAL;
-        rep->result = rc;
     }
     return rc;
 }
+
+
+int var_get_next( const char *req_buf, char *rep_buf )
+{
+    assert( req_buf );
+    assert( rep_buf );
+    printf( "Enter %s\n", __func__ );
+
+    int rc = EINVAL;
+    dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
+    char *req_data = req->data;
+
+    dsv_msg_reply_t *rep = (dsv_msg_reply_t *)rep_buf;
+    char *rep_data = rep->data;
+    rep->length = sizeof(dsv_msg_reply_t);
+
+    int last_index = *(int *)req_data;
+    int index = -1;
+    std::string search_name(req_data + sizeof(int));
+    for (auto e : g_map)
+    {
+        if( e.first.find(search_name) != -1 )
+        {
+            if( ++index > last_index )
+            {
+                /* fill index */
+                *(int *)rep_data = index;
+                rep->length += sizeof(int);
+
+                /* fill name */
+                rep_data += sizeof(int);
+                strcpy(rep_data, e.first.c_str());
+                rep->length += strlen(rep_data) + 1;
+
+                /* fill value */
+                rep_data += strlen(rep_data) + 1;
+                dsv_info_t *pDsv = (dsv_info_t *)e.second;
+                rep->length += DSV_Value2Str( rep_data, DSV_STRING_SIZE_MAX, pDsv );
+                rc = 0;
+                break;
+            }
+        }
+    }
+    return rc;
+}
+
 
 int var_notify( char *sub_buf, char *fwd_buf )
 {
@@ -326,35 +366,22 @@ int var_notify( char *sub_buf, char *fwd_buf )
     assert( fwd_buf );
     printf( "Enter %s\n", __func__ );
 
+    int rc = EINVAL;
     /* byte 0 is the subscription flag */
     char sub_flag = sub_buf[0];
-
-    dsv_msg_forward_t *fwd = (dsv_msg_forward_t *)fwd_buf;
-    char *fwd_data = fwd->data;
-    fwd->length = 0;
-    int rc = EINVAL;
-
-    std::string full_name( &sub_buf[1] );
-    auto e = g_map.find(full_name);
-    if ( e != g_map.end() )
+    if( sub_flag == 1 )
     {
-        dsv_info_t *pDsv = (dsv_info_t *)e->second;
-        printf( "Subscribe %s\n", full_name.c_str() );
-        strcpy( fwd_data, full_name.c_str() );
-        fwd->length += full_name.length() + 1;
-        if( pDsv->type == DSV_TYPE_STR )
+        /* fill the forward buffer */
+        std::string full_name( &sub_buf[1] );
+        auto e = g_map.find(full_name);
+        if ( e != g_map.end() )
         {
-            strcpy( fwd_data + fwd->length, pDsv->value.pData );
-            fwd->length += strlen(pDsv->value.pData) + 1;
+            dsv_info_t *pDsv = (dsv_info_t *)e->second;
+            printf( "Subscribe %s\n", full_name.c_str() );
+            fill_fwd_buf( full_name.c_str(), pDsv, fwd_buf );
+            rc = 0;
         }
-        else
-        {
-            memcpy( fwd_data + fwd->length, &pDsv->value, sizeof(dsv_value_t) );
-            fwd->length += sizeof(dsv_value_t);
-        }
-        rc = 0;
     }
-
     return rc;
 }
 

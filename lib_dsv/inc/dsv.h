@@ -209,6 +209,13 @@ int DSV_DiscoverServer( char *server_ip, size_t size );
 int DSV_SetByName( void *ctx, uint32_t instID, const char *name, char *value );
 int DSV_GetByName( void *ctx, uint32_t instID, const char *name, char *value, size_t size );
 int DSV_SubByName( void *ctx, uint32_t instID, const char *name );
+int DSV_GetByNameFuzzy( void *ctx,
+                        const char *search_name,
+                        int last_index,
+                        char *name,
+                        size_t namesz,
+                        char *value,
+                        size_t valuesz );
 
 #if 0
 

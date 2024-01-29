@@ -41,10 +41,9 @@ typedef enum DSV_MSG_TYPE
     DSV_MSG_GET_TYPE,
     DSV_MSG_SET,
     DSV_MSG_GET,
-    DSV_MSG_GET_FIRST,
     DSV_MSG_GET_NEXT,
     DSV_MSG_SUBSCRIBE,
-    
+
     DSV_MSG_APPLY_ID,
     DSV_MSG_MAX
 }dsv_msg_type_t;
@@ -82,8 +81,8 @@ typedef struct dsv_msg_forward
 
 typedef dsv_comm_msg_def dsv_comm_msg_t;
 
-/*! The dsv_msg_create_t message is passed to the server to request the 
- * creation of a new system variable. 
+/*! The dsv_msg_create_t message is passed to the server to request the
+ * creation of a new system variable.
  */
 typedef struct
 {
@@ -92,8 +91,8 @@ typedef struct
 
 } dsv_msg_create_t;
 
-/*! The dsv_msg_set_t message is used to set the value of a dsv using its 
- * name and a string representation of its value  
+/*! The dsv_msg_set_t message is used to set the value of a dsv using its
+ * name and a string representation of its value
  */
 typedef struct
 {

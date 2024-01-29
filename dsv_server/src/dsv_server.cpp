@@ -176,6 +176,11 @@ static int dsv_handle_reply()
         rep->result = rc;
         break;
 
+    case DSV_MSG_GET_NEXT:
+        rc = var_get_next( req_buf, rep_buf );
+        rep->result = rc;
+        break;
+
     default:
         syslog( LOG_ERR, "Unsupported request type!" );
         break;

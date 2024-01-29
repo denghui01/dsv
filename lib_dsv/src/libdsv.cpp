@@ -154,8 +154,8 @@ int DSV_Str2Value( const char *str, dsv_info_t *pDsv )
     len
         size of buffer
 @return
-    0 - success
-    any other value specifies an error code (see errno.h)
+    positive number - number of bytes copied
+    -1 - error happened
 
 ==============================================================================*/
 int DSV_Value2Str( char *buf, size_t len, const dsv_info_t *pDsv )
@@ -163,41 +163,42 @@ int DSV_Value2Str( char *buf, size_t len, const dsv_info_t *pDsv )
     assert(pDsv);
     assert(buf);
 
-    int rc = 0;
+    int rc = -1;
     switch( pDsv->type )
     {
     case DSV_TYPE_STR:
-        snprintf( buf, len, "%s", pDsv->value.pData );
+        rc = snprintf( buf, len, "%s", pDsv->value.pData );
+        rc += 1; /* include terminated null byte */
         break;
     case DSV_TYPE_UINT16:
-        snprintf( buf, len, "%" PRIu16, pDsv->value.u16 );
+        rc = snprintf( buf, len, "%" PRIu16, pDsv->value.u16 );
         break;
     case DSV_TYPE_UINT32:
-        snprintf( buf, len, "%" PRIu32, pDsv->value.u32 );
+        rc = snprintf( buf, len, "%" PRIu32, pDsv->value.u32 );
         break;
     case DSV_TYPE_UINT64:
-        snprintf( buf, len, "%" PRIu64, pDsv->value.u64 );
+        rc = snprintf( buf, len, "%" PRIu64, pDsv->value.u64 );
         break;
     case DSV_TYPE_UINT8:
-        snprintf( buf, len, "%" PRIu8, pDsv->value.u8 );
+        rc = snprintf( buf, len, "%" PRIu8, pDsv->value.u8 );
         break;
     case DSV_TYPE_SINT16:
-        snprintf( buf, len, "%" PRId16, pDsv->value.s16 );
+        rc = snprintf( buf, len, "%" PRId16, pDsv->value.s16 );
         break;
     case DSV_TYPE_SINT32:
-        snprintf( buf, len, "%" PRId32, pDsv->value.s32 );
+        rc = snprintf( buf, len, "%" PRId32, pDsv->value.s32 );
         break;
     case DSV_TYPE_SINT64:
-        snprintf( buf, len, "%" PRId64, pDsv->value.s64 );
+        rc = snprintf( buf, len, "%" PRId64, pDsv->value.s64 );
         break;
     case DSV_TYPE_SINT8:
-        snprintf( buf, len, "%" PRId8, pDsv->value.s8 );
+        rc = snprintf( buf, len, "%" PRId8, pDsv->value.s8 );
         break;
     case DSV_TYPE_FLOAT:
-        snprintf( buf, len, "%f", pDsv->value.f32 );
+        rc = snprintf( buf, len, "%f", pDsv->value.f32 );
         break;
     case DSV_TYPE_DOUBLE:
-        snprintf( buf, len, "%f", pDsv->value.f64 );
+        rc = snprintf( buf, len, "%f", pDsv->value.f64 );
         break;
     default:
         printf("Unsupported type of dsv!\n");
@@ -344,7 +345,8 @@ static int dsv_SendMsg(void *ctx,
     }
     else if( req->type == DSV_MSG_GET_HANDLE ||
              req->type == DSV_MSG_GET_TYPE   ||
-             req->type == DSV_MSG_GET )
+             req->type == DSV_MSG_GET ||
+             req->type == DSV_MSG_GET_NEXT )
     {
         if( req_buf != NULL )
         {
@@ -1382,6 +1384,7 @@ int DSV_Set( void *ctx, void *hndl, T value )
 
     This function request dsv server to query dsv with value.
     This is a helper function that should not be used in time critical case.
+    The instID and name must be exactly matched
 
     This function first query the handle from the server then call
     DSV_GetThruStr function to set the value in string form
@@ -1398,7 +1401,7 @@ int DSV_Set( void *ctx, void *hndl, T value )
     name
         dsv name string terminated by NULL byte
 
-@param[in]
+@param[out]
     value
         dsv value as string
 
@@ -1431,6 +1434,89 @@ int DSV_GetByName( void *ctx,
     }
 
     rc = DSV_GetThruStr( ctx, hndl, value, size );
+    return rc;
+}
+
+/*!=============================================================================
+
+    This function request dsv server to query dsv with value.
+    This is a helper function that should not be used in time critical case.
+    Partially matched name will also return its value
+
+    This function first query the handle from the server then call
+    DSV_GetThruStr function to set the value in string form
+
+@param[in]
+    ctx
+        dsv ctx ( returned by DSV_Open() )
+
+@param[in]
+    name
+        dsv name string terminated by NULL byte
+
+@param[in]
+    index
+        index of last match
+
+@param[out]
+    value
+        dsv value as string
+
+@param[in]
+    size
+        size of value buffer
+
+@return
+    index of dsv matched this time - success
+    -1 - the end of match
+
+==============================================================================*/
+int DSV_GetByNameFuzzy( void *ctx,
+                        const char *search_name,
+                        int last_index,
+                        char *name,
+                        size_t namesz,
+                        char *value,
+                        size_t valuesz )
+{
+    assert( ctx );
+    assert( name );
+    assert( value );
+
+    int rc = EINVAL;
+    char req_buf[BUFSIZE];
+    dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
+    char *req_data = req->data;
+
+    char rep_buf[BUFSIZE];
+    dsv_msg_reply_t *rep = (dsv_msg_reply_t *)rep_buf;
+    char *rep_data = rep->data;
+
+    req->type = DSV_MSG_GET_NEXT;
+    req->instID = -1; // no use
+    req->length = sizeof(dsv_msg_request_t);
+
+    *(int *)req_data = last_index;
+    req->length += sizeof(int);
+
+    req_data += sizeof(int);
+    strcpy( req_data, search_name );
+    req->length += strlen(search_name) + 1;
+
+    rc = dsv_SendMsg( ctx, req_buf, req->length, rep_buf, sizeof(rep_buf) );
+    if( rc != 0 )
+    {
+        syslog( LOG_ERR, "Failed to send message to the server" );
+        rc = -1;
+    }
+    else
+    {
+        rc = *(int *)rep_data;
+        rep_data += sizeof(int);
+        strncpy(name, rep_data, namesz);
+        rep_data += strlen(rep_data) + 1;
+        strncpy( value, rep_data, valuesz );
+    }
     return rc;
 }
 

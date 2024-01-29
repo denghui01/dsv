@@ -188,30 +188,28 @@ int ProcessSub( int argc, char **argv )
 int ProcessGet( int argc, char **argv )
 {
     int rc = EINVAL;
+    char value[DSV_STRING_SIZE_MAX];
+    char name[DSV_STRING_SIZE_MAX];
+
     for(; optind < argc; ++optind )
     {
         /* the rest of parameters should be multiple names */
-        rc = sscanf( argv[optind], "[%d]%s", &g_state.instID, g_state.dsv_name );
-        if( rc != 2 )
+        strncpy( g_state.dsv_name, argv[optind], DSV_STRING_SIZE_MAX );
+        int index = -1;
+        do
         {
-            fprintf( stderr, "Dsv name should include instance ID\n" );
-            rc = EINVAL;
-        }
-        else
-        {
-            rc = DSV_GetByName( g_state.dsv_ctx,
-                                g_state.instID,
-                                g_state.dsv_name,
-                                g_state.dsv_val,
-                                DSV_STRING_SIZE_MAX );
-            if( rc == 0 )
+            index = DSV_GetByNameFuzzy( g_state.dsv_ctx,
+                                        g_state.dsv_name,
+                                        index,
+                                        name,
+                                        DSV_STRING_SIZE_MAX,
+                                        value,
+                                        DSV_STRING_SIZE_MAX );
+            if( index != -1 )
             {
-                printf( "[%d]%s=%s\n",
-                        g_state.instID,
-                        g_state.dsv_name,
-                        g_state.dsv_val );
+                printf( "%s=%s\n", name, value );
             }
-        }
+        } while( index != -1 );
     }
 
     return rc;
