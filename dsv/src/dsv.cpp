@@ -69,25 +69,25 @@ struct state
 static void usage( void )
 {
     fprintf( stderr,
-        "usage: sv [-a][-s][-g][-i][-f][-y][-d][t][-v] <variable-name> [<value>]\n"
-        "    -a/add/create - add/create a new dsv\n"
-        "    -s/set/write - set a dsv value\n"
-        "    -g/get/read - get a dsv value\n"
-        "    -u/sub/subscribe - subscribe a dsv\n"
-        "    -f <file-name> - create a batch of DSVs from a JSON file\n"
-        "    -i <instance ID> - create a DSV with instance ID\n"
-        "    -y <type> - create a DSV with type\n"
-        "    -d <description> - create a DSV with description\n"
-        "    -t <tag1,tag2> - create a DSV with tags, delimiter with ','\n"
-        "    -v <default value> - create a DSV with default value\n"
-        "example:\n"
-        "   sv add -i 1235 -f dsvs.json\n"
-        "   sv add /SYS/STS/DEVICE_NAME -i 1235 -v \"wifi router\" -y string -d \"device name\" -t \"sys.sts\"\n"
-        "   sv set [0]/SYS/STS/DATE 2023-12-25\n"
-        "   sv set [0]/SYS/STS/NAME \"wifi router\"\n"
-        "   sv get [123]/SYS/STS/DEVICE_NAME\n"
-        "   sv sub [123]/SYS/STS/DEVICE_NAME\n"
-              );
+             "usage: sv [-c][-s][-g][-i][-f][-y][-d][t][-v] <variable-name> [<value>]\n"
+             "    -c/create - create a new dsv\n"
+             "    -s/set/write - set a dsv value\n"
+             "    -g/get/read - get a dsv value\n"
+             "    -u/sub/subscribe - subscribe a dsv\n"
+             "    -f <file-name> - create a batch of DSVs from a JSON file\n"
+             "    -i <instance ID> - create a DSV with instance ID\n"
+             "    -y <type> - create a DSV with type\n"
+             "    -d <description> - create a DSV with description\n"
+             "    -t <tag1,tag2> - create a DSV with tags, delimiter with ','\n"
+             "    -v <default value> - create a DSV with default value\n"
+             "example:\n"
+             "   sv -c -i 1235 -f dsvs.json\n"
+             "   sv -c /SYS/STS/DEVICE_NAME -i 1235 -v \"wifi router\" -y string -d \"device name\" -t \"sys.sts\"\n"
+             "   sv set [0]/SYS/STS/DATE 2023-12-25\n"
+             "   sv set [0]/SYS/STS/NAME \"wifi router\"\n"
+             "   sv get [123]/SYS/STS/DEVICE_NAME\n"
+             "   sv sub [123]/SYS/STS/DEVICE_NAME\n"
+           );
 }
 
 /*!=============================================================================
@@ -145,17 +145,17 @@ int ProcessSub( int argc, char **argv )
             {
                 sscanf( full_name, "[%d]%s", &instID, name );
                 dsv_info_t dsv;
-                dsv.type = DSV_Type(g_state.dsv_ctx,
-                                    DSV_Handle(g_state.dsv_ctx, instID, name));
+                dsv.type = DSV_Type( g_state.dsv_ctx,
+                                     DSV_Handle( g_state.dsv_ctx, instID, name ) );
                 if( dsv.type == DSV_TYPE_STR )
                 {
-                    printf("%s=%s\n", full_name, value );
+                    printf( "%s=%s\n", full_name, value );
                 }
                 else
                 {
                     dsv.value = *(dsv_value_t *)value;
                     DSV_Value2Str( value, DSV_STRING_SIZE_MAX, &dsv );
-                    printf("%s=%s\n", full_name, value );
+                    printf( "%s=%s\n", full_name, value );
                 }
             }
         }
@@ -301,7 +301,7 @@ int ProcessCreate( int argc, char **argv )
     {
         rc = DSV_CreateWithJson( g_state.dsv_ctx,
                                  g_state.instID,
-                                 g_state.json_file);
+                                 g_state.json_file );
     }
 
     return rc;
@@ -331,53 +331,53 @@ int ProcessOptions( int argc, char **argv )
     char name[DSV_STRING_SIZE_MAX];
 
     /* process all the command line options */
-    while( ( opt = getopt( argc, argv, "asguf:i:y:d:t:v:" ) ) != -1 )
+    while( (opt = getopt( argc, argv, "csguf:i:y:d:t:v:" )) != -1 )
     {
         switch( opt )
         {
-            case 'a':
-                g_state.operation = DSV_CREATE;
-                break;
+        case 'c':
+            g_state.operation = DSV_CREATE;
+            break;
 
-            case 's':
-                g_state.operation = DSV_SET;
-                break;
+        case 's':
+            g_state.operation = DSV_SET;
+            break;
 
-            case 'g':
-                g_state.operation = DSV_GET;
-                break;
+        case 'g':
+            g_state.operation = DSV_GET;
+            break;
 
-            case 'u':
-                g_state.operation = DSV_SUB;
-                break;
+        case 'u':
+            g_state.operation = DSV_SUB;
+            break;
 
-            case 'f':
-                g_state.json_file = optarg;
-                break;
+        case 'f':
+            g_state.json_file = optarg;
+            break;
 
-            case 'i':
-                g_state.instID = strtoul( optarg, NULL, 0 );
-                break;
+        case 'i':
+            g_state.instID = strtoul( optarg, NULL, 0 );
+            break;
 
-            case 'y':
-                g_state.dsv.type = DSV_GetTypeFromStr( optarg );
-                break;
+        case 'y':
+            g_state.dsv.type = DSV_GetTypeFromStr( optarg );
+            break;
 
-            case 'd':
-                g_state.dsv.pDesc = strdup(optarg);
-                break;
+        case 'd':
+            g_state.dsv.pDesc = strdup( optarg );
+            break;
 
-            case 't':
-                g_state.dsv.pTags = strdup(optarg);
-                break;
+        case 't':
+            g_state.dsv.pTags = strdup( optarg );
+            break;
 
-            case 'v':
-                DSV_Str2Value( optarg, &g_state.dsv );
-                break;
+        case 'v':
+            DSV_Str2Value( optarg, &g_state.dsv );
+            break;
 
-            default:
-                rc = EINVAL;
-                break;
+        default:
+            rc = EINVAL;
+            break;
         }
     }
 
@@ -386,26 +386,25 @@ int ProcessOptions( int argc, char **argv )
         /* No short option indicate operation, at lease one long argv*/
         if( optind < argc )
         {
-            if( (strcmp( argv[optind], "add" ) == 0) ||
-                (strcmp( argv[optind], "create" ) == 0) )
+            if( strcmp( argv[optind], "create" ) == 0 )
             {
                 g_state.operation = DSV_CREATE;
                 optind++;
             }
             else if( (strcmp( argv[optind], "set" ) == 0) ||
-                (strcmp( argv[optind], "write" ) == 0) )
+                     (strcmp( argv[optind], "write" ) == 0) )
             {
                 g_state.operation = DSV_SET;
                 optind++;
             }
             else if( (strcmp( argv[optind], "get" ) == 0) ||
-                (strcmp( argv[optind], "read" ) == 0) )
+                     (strcmp( argv[optind], "read" ) == 0) )
             {
                 g_state.operation = DSV_GET;
                 optind++;
             }
             else if( (strcmp( argv[optind], "sub" ) == 0) ||
-                     (strcmp( argv[optind], "subscribe" ) == 0))
+                     (strcmp( argv[optind], "subscribe" ) == 0) )
             {
                 g_state.operation = DSV_SUB;
                 optind++;
@@ -442,7 +441,7 @@ int ProcessOptions( int argc, char **argv )
     EXIT_SUCCESS - success
     EXIT_FAILURE - failed
 /*============================================================================*/
-int main(int argc, char *argv[])
+int main( int argc, char *argv[] )
 {
     int rc = 0;
 
@@ -460,7 +459,7 @@ int main(int argc, char *argv[])
     }
 
     g_state.dsv_ctx = DSV_Open();
-    if(g_state.dsv_ctx == NULL)
+    if( g_state.dsv_ctx == NULL )
     {
         exit( EXIT_FAILURE );
     }
@@ -485,21 +484,21 @@ int main(int argc, char *argv[])
 
     if( g_state.dsv.pName )
     {
-        free(g_state.dsv.pName);
+        free( g_state.dsv.pName );
     }
     if( g_state.dsv.pDesc )
     {
-        free(g_state.dsv.pDesc);
+        free( g_state.dsv.pDesc );
     }
     if( g_state.dsv.pTags )
     {
-        free(g_state.dsv.pTags);
+        free( g_state.dsv.pTags );
     }
     if( g_state.dsv.type == DSV_TYPE_STR )
     {
-        if( g_state.dsv.value.pData )
+        if( g_state.dsv.value.pStr )
         {
-            free( g_state.dsv.value.pData );
+            free( g_state.dsv.value.pStr );
         }
     }
 

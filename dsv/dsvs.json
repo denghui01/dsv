@@ -33,5 +33,89 @@
         "value": 1,
         "tags": "sys.sts",
         "description": "software major version"
+    },
+    {
+        "name": "/SYS/TEST/U32",
+        "type": "uint32",
+        "value": 99,
+        "tags": "sys.cfg",
+        "description": "test variable for uint32"
+    },
+    {
+        "name": "/SYS/TEST/S32",
+        "type": "sint32",
+        "value": -99,
+        "tags": "sys.cfg",
+        "description": "test variable for sint32"
+    },
+    {
+        "name": "/SYS/TEST/U16",
+        "type": "uint16",
+        "value": 100,
+        "tags": "sys.cfg",
+        "description": "test variable for uint16"
+    },
+    {
+        "name": "/SYS/TEST/S16",
+        "type": "sint16",
+        "value": -100,
+        "tags": "sys.cfg",
+        "description": "test variable for sint16"
+    },
+    {
+        "name": "/SYS/TEST/U8",
+        "type": "uint8",
+        "value": 17,
+        "tags": "sys.cfg",
+        "description": "test variable for uint8"
+    },
+    {
+        "name": "/SYS/TEST/S8",
+        "type": "sint8",
+        "value": -17,
+        "tags": "sys.cfg",
+        "description": "test variable for sint8"
+    },
+    {
+        "name": "/SYS/TEST/U64",
+        "type": "uint64",
+        "value": 987654321234,
+        "tags": "sys.cfg",
+        "description": "test variable for uint64"
+    },
+    {
+        "name": "/SYS/TEST/S64",
+        "type": "sint64",
+        "value": -98765432101234,
+        "tags": "sys.cfg",
+        "description": "test variable for sint64"
+    },
+    {
+        "name": "/SYS/TEST/DOUBLE",
+        "type": "double",
+        "value": -99.87654321,
+        "tags": "sys.cfg",
+        "description": "test variable for double"
+    },
+    {
+        "name": "/SYS/TEST/FLOAT",
+        "type": "float",
+        "value": -99.88,
+        "tags": "sys.cfg",
+        "description": "test variable for float"
+    },
+    {
+        "name": "/SYS/TEST/STR",
+        "type": "string",
+        "value": "test string",
+        "tags": "sys.sts",
+        "description": "test variable for string"
+    },
+    {
+        "name": "/SYS/TEST/INT_ARRAY",
+        "type": "int_array",
+        "value": "11,22,33,44,55",
+        "tags": "sys.sts",
+        "description": "test variable for int array"
     }
 ]

@@ -69,7 +69,7 @@ struct dsv_state
     void *sock_reply;
 
     /*! zactor for speaker */
-    zactor_t *speaker;
+    void *speaker;
 
 }g_state;
 
@@ -278,7 +278,7 @@ static int dsv_handle_backend()
         return rc;
     }
 
-    rc = var_notify(sub_buf, fwd_buf);
+    rc = var_notify( sub_buf, fwd_buf );
     if( rc == 0 )
     {
         rc = zmq_send( backend, fwd_data, fwd->length, 0 );
@@ -369,8 +369,8 @@ static void dsv_server_destroy()
     hdestroy();
 
     /* clean up discover server */
-    zstr_sendx (g_state.speaker, "SILENCE", NULL);
-    zactor_destroy (&g_state.speaker);
+    zstr_sendx( (zactor_t *)g_state.speaker, "SILENCE", NULL );
+    zactor_destroy( (zactor_t **)&g_state.speaker );
 
     /* cleanup and terminate the process */
     if( g_state.sock_backend != NULL )
@@ -423,7 +423,7 @@ static int dsv_setup_frontend()
     {
         g_state.sock_frontend = sock;
         rc = zmq_setsockopt( sock, ZMQ_SUBSCRIBE, "", 0 );
-        assert(rc == 0);
+        assert( rc == 0 );
     }
     else
     {
@@ -499,31 +499,6 @@ static int dsv_setup_reply()
 
 /*!=============================================================================
 
-    Broadcast message using zbeacon
-
-@return
-    0 for success, non-zero for failure
-==============================================================================*/
-static int dsv_run_server()
-{
-    printf("!!!Start to run server\n");
-    g_state.speaker = zactor_new (zbeacon, NULL);
-    assert (g_state.speaker);
-//  zstr_sendx (g_state.speaker, "VERBOSE", NULL);
-    zsock_send (g_state.speaker, "si", "CONFIGURE", 9999);
-    char *hostname = zstr_recv (g_state.speaker);
-    assert(*hostname);
-    freen (hostname);
-
-    //  We will broadcast the magic value 0xCAFE
-    byte announcement [2] = { 0xCA, 0xFE };
-    zsock_send (g_state.speaker, "sbi", "PUBLISH", announcement, 2, 100);
-
-    return 0;
-}
-
-/*!=============================================================================
-
     Initialize zmq for dsv server
 
 @return
@@ -533,7 +508,7 @@ static int dsv_server_init_zmq()
 {
     int rc = 0;
 
-    memset(&g_state, 0, sizeof(g_state));
+    memset( &g_state, 0, sizeof(g_state) );
 
     /* create a self-pipe to get the exit signal */
     s_create_pipe();
@@ -548,7 +523,7 @@ static int dsv_server_init_zmq()
     }
 
     /*! run discoery server if there is not */
-    dsv_run_server();
+    g_state.speaker = DSV_RunServer();
 
     /* Create zmq context */
     g_state.zmq_ctx = zmq_ctx_new();

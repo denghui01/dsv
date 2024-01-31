@@ -52,7 +52,7 @@ typedef enum dsv_type
 
     DSV_TYPE_STR = 1,
 
-    DSV_TYPE_BLOB = 2,
+    DSV_TYPE_INT_ARRAY = 2,
 
     DSV_TYPE_UINT16 = 3,
 
@@ -95,8 +95,11 @@ typedef enum dsv_notification
 
 typedef union dsv_value
 {
-    /*! used for string or blob */
-    char *pData;
+    /*! used for string */
+    char *pStr;
+
+    /*! used for array */
+    void *pArray;
 
     uint16_t u16;
 
@@ -176,6 +179,9 @@ int DSV_SetThruStr( void *ctx, void *hndl, char *value );
 /* dsv is string type, set the value */
 int DSV_Set( void *ctx, void *hndl, char *value );
 
+/* dsv is int array type, set the value */
+int DSV_Set( void *ctx, void *hndl, dsv_info_t *dsv );
+
 /* dsv is numeric type, set the value */
 template<typename T>
 int DSV_Set( void *ctx, void *hndl, T value );
@@ -193,18 +199,6 @@ int DSV_Get( void *ctx, void *hndl, T *value );
 /* get notifications of subscribed dsvs*/
 int DSV_GetNotification( void *ctx, char *name, size_t nlen, char *value, size_t vlen );
 
-int DSV_Str2Value( const char *str, dsv_info_t *pDsv );
-
-int DSV_Value2Str( char *buf, size_t len, const dsv_info_t *pDsv );
-
-dsv_type_t DSV_GetTypeFromStr( const char *type_str );
-
-int DSV_GetSizeFromType( int type );
-
-void DSV_Print( const dsv_info_t *pDsv );
-
-int DSV_DiscoverServer( char *server_ip, size_t size );
-
 /* helper functions */
 int DSV_SetByName( void *ctx, uint32_t instID, const char *name, char *value );
 int DSV_GetByName( void *ctx, uint32_t instID, const char *name, char *value, size_t size );
@@ -216,6 +210,23 @@ int DSV_GetByNameFuzzy( void *ctx,
                         size_t namesz,
                         char *value,
                         size_t valuesz );
+
+/* dsv utilities */
+void *memdup( const void *buf, size_t count );
+int DSV_Memcpy( void *dest, dsv_info_t *dsv );
+int DSV_Str2Value( const char *str, dsv_info_t *pDsv );
+int DSV_Str2Array( const char *input, dsv_info_t *pDsv );
+int DSV_Array2Str( char *buf, size_t len, const dsv_info_t *pDsv );
+int DSV_Value2Str( char *buf, size_t len, const dsv_info_t *pDsv );
+int DSV_Double2Value( double df, dsv_info_t *pDsv );
+dsv_type_t DSV_GetTypeFromStr( const char *type_str );
+int DSV_GetSizeFromType( int type );
+void DSV_Print( const dsv_info_t *pDsv );
+
+/* dsv discovery */
+int DSV_DiscoverServer( char *server_ip, size_t size );
+void *DSV_RunServer();
+
 
 #if 0
 
