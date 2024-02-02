@@ -10,4 +10,5 @@ dsv_server/build/
 dsv_server/doc/
 lib_dsv/build/
 lib_dsv/doc/
+asv/build
 Debug/
