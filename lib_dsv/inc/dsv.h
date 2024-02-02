@@ -165,7 +165,7 @@ void DSV_Close( void *ctx );
 int DSV_Create( void *ctx, uint32_t instID, dsv_info_t *pDsv );
 
 /* create a batch of dsv with JSON file */
-int DSV_CreateWithJson( void *ctx, uint32_t instID, char *file );
+int DSV_CreateWithJson( void *ctx, uint32_t instID, const char *file );
 
 /* query the handle of dsv */
 void *DSV_Handle( void *ctx, uint32_t instID, const char *name );
@@ -174,13 +174,13 @@ void *DSV_Handle( void *ctx, uint32_t instID, const char *name );
 int DSV_Type( void *ctx, void *hndl );
 
 /* the value set is in string form, no matter the real type of dsv */
-int DSV_SetThruStr( void *ctx, void *hndl, char *value );
+int DSV_SetThruStr( void *ctx, void *hndl, const char *value );
 
 /* dsv is string type, set the value */
 int DSV_Set( void *ctx, void *hndl, char *value );
 
 /* dsv is int array type, set the value */
-int DSV_Set( void *ctx, void *hndl, dsv_info_t *dsv );
+int DSV_Set( void *ctx, void *hndl, void *data, size_t size );
 
 /* dsv is numeric type, set the value */
 template<typename T>
@@ -199,7 +199,11 @@ int DSV_Get( void *ctx, void *hndl, T *value );
 /* get notifications of subscribed dsvs*/
 int DSV_GetNotification( void *ctx, char *name, size_t nlen, char *value, size_t vlen );
 
+/* int array dsv operations */
+int DSV_InsItemToArray( void *ctx, void *hndl, int index, int value );
+
 /* helper functions */
+/* TODO: provide helper funtions to support set by name, but with real value */
 int DSV_SetByName( void *ctx, uint32_t instID, const char *name, char *value );
 int DSV_GetByName( void *ctx, uint32_t instID, const char *name, char *value, size_t size );
 int DSV_SubByName( void *ctx, uint32_t instID, const char *name );
@@ -215,7 +219,7 @@ int DSV_GetByNameFuzzy( void *ctx,
 void *memdup( const void *buf, size_t count );
 int DSV_Memcpy( void *dest, dsv_info_t *dsv );
 int DSV_Str2Value( const char *str, dsv_info_t *pDsv );
-int DSV_Str2Array( const char *input, dsv_info_t *pDsv );
+int DSV_Str2Array( const char *input, void **data, size_t *size );
 int DSV_Array2Str( char *buf, size_t len, const dsv_info_t *pDsv );
 int DSV_Value2Str( char *buf, size_t len, const dsv_info_t *pDsv );
 int DSV_Double2Value( double df, dsv_info_t *pDsv );

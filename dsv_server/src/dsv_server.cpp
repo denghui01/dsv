@@ -35,7 +35,6 @@ SOFTWARE.
 #include <assert.h>
 #include <signal.h>
 #include <errno.h>
-#include <search.h>
 #include "zmq.h"
 #include "czmq.h"
 #include "dsv.h"
@@ -366,8 +365,6 @@ static void dsv_server_destroy()
 {
     syslog( LOG_ERR, "Exit and clean up proxy!" );
 
-    hdestroy();
-
     /* clean up discover server */
     zstr_sendx( (zactor_t *)g_state.speaker, "SILENCE", NULL );
     zactor_destroy( (zactor_t **)&g_state.speaker );
@@ -572,25 +569,6 @@ static int dsv_server_init_zmq()
 }
 
 /*!=============================================================================
-
-    Initialize hash table module for dsv server
-
-@return
-    0 for success, non-zero for failure
-==============================================================================*/
-static int dsv_server_init_hash()
-{
-    int rc = hcreate( DSV_VRAS_NUM_MAX );
-    if( rc == 0 )
-    {
-        syslog( LOG_ERR, "Failed to create hash table" );
-        return EFAULT;
-    }
-
-    return 0;
-}
-
-/*!=============================================================================
     Initialize dsv server
 
 @return
@@ -598,15 +576,7 @@ static int dsv_server_init_hash()
 ==============================================================================*/
 static int dsv_server_init()
 {
-    int rc;
-
-    rc = dsv_server_init_hash();
-    if( rc == 0 )
-    {
-        rc = dsv_server_init_zmq();
-    }
-
-    return rc;
+    return dsv_server_init_zmq();
 }
 
 /*!=============================================================================

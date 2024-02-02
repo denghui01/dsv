@@ -42,8 +42,11 @@ typedef enum DSV_MSG_TYPE
     DSV_MSG_SET,
     DSV_MSG_GET,
     DSV_MSG_GET_NEXT,
-    DSV_MSG_SUBSCRIBE,
-
+    DSV_MSG_ADD_ITEM,
+    DSV_MSG_DEL_ITEM,
+    DSV_MSG_INS_ITEM,
+    DSV_MSG_SET_ITEM,
+    DSV_MSG_GET_ITEM,
     DSV_MSG_APPLY_ID,
     DSV_MSG_MAX
 }dsv_msg_type_t;

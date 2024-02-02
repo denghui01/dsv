@@ -111,39 +111,44 @@ int DSV_Memcpy( void *dest, dsv_info_t *dsv )
 @param[in]
     input
         C string. If the type is array should be "a,b,c"
-
-@param[in]
-    pDsv
-        pointer to the dsv information
-
+@param[out]
+    data
+        pointer to the array buffer
+@param[out]
+    size
+        address of size of array buffer
 @return
     0 - success
     any other value specifies an error code (see errno.h)
 
 ==============================================================================*/
-int DSV_Str2Array( const char *input, dsv_info_t *pDsv )
+int DSV_Str2Array( const char *input, void **data, size_t *size )
 {
+    assert(input);
+    assert(data);
+    assert(size);
+
     int rc = EINVAL;
     std::vector< int > vi;
     char str[DSV_STRING_SIZE_MAX];
     strncpy( str, input, DSV_STRING_SIZE_MAX );
-    pDsv->len = 0;
-    if( pDsv->type == DSV_TYPE_INT_ARRAY )
+    int len = 0;
+
+    /* parse and allocate memory for int array */
+    char *token = strtok( str, "," );
+    while( token )
     {
-        /* parse and allocate memory for int array */
-        char *token = strtok( str, "," );
-        while( token )
-        {
-            vi.push_back( atoi( token ) );
-            token = strtok( NULL, "," );
-        }
-        pDsv->len = vi.size() * sizeof(int);
-        pDsv->value.pArray = memdup( vi.data(), pDsv->len );
-        if( pDsv->value.pArray )
-        {
-            rc = 0;
-        }
+        vi.push_back( atoi( token ) );
+        token = strtok( NULL, "," );
     }
+    len = vi.size() * sizeof(int);
+    *data = memdup( vi.data(), len );
+    if( *data != NULL )
+    {
+        *size = len;
+        rc = 0;
+    }
+
     return rc;
 }
 
@@ -167,6 +172,8 @@ int DSV_Str2Array( const char *input, dsv_info_t *pDsv )
 int DSV_Str2Value( const char *str, dsv_info_t *pDsv )
 {
     int rc = 0;
+    size_t size;
+    void *data;
     switch( pDsv->type )
     {
     case DSV_TYPE_STR:
@@ -174,7 +181,12 @@ int DSV_Str2Value( const char *str, dsv_info_t *pDsv )
         pDsv->len = strlen( str ) + 1;
         break;
     case DSV_TYPE_INT_ARRAY:
-        DSV_Str2Array( str, pDsv );
+        rc = DSV_Str2Array( str, &data, &size );
+        if( rc == 0 )
+        {
+            pDsv->len = size;
+            pDsv->value.pArray = data;
+        }
         break;
     case DSV_TYPE_UINT32:
         pDsv->value.u32 = strtoul( str, NULL, 0 );
@@ -528,6 +540,9 @@ int DSV_GetSizeFromType( int type )
     return rc;
 }
 
+/*!=============================================================================
+    print dsv information
+==============================================================================*/
 void DSV_Print( const dsv_info_t *pDsv )
 {
     assert( pDsv );

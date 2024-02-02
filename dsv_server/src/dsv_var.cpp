@@ -62,11 +62,9 @@ std::unordered_map< std::string, void * > g_map;
 @param[in]
     dest
         destination buffer
-
 @param[in]
     dsv
         pointer of dsv information structure, holding type, len and value
-
 @return
     positive number - number of bytes copied
     -1 - failed
@@ -356,9 +354,9 @@ int var_get_next( const char *req_buf, char *rep_buf )
     int last_index = *(int *)req_data;
     int index = -1;
     std::string search_name( req_data + sizeof( int ) );
-    for( auto e : g_map )
+    for( auto [dsv_name, dsv_info] : g_map )
     {
-        if( e.first.find( search_name ) != -1 )
+        if( dsv_name.find( search_name ) != -1 )
         {
             if( ++index > last_index )
             {
@@ -368,12 +366,12 @@ int var_get_next( const char *req_buf, char *rep_buf )
 
                 /* fill name */
                 rep_data += sizeof(int);
-                strcpy( rep_data, e.first.c_str() );
+                strcpy( rep_data, dsv_name.c_str() );
                 rep->length += strlen( rep_data ) + 1;
 
                 /* fill value */
                 rep_data += strlen( rep_data ) + 1;
-                dsv_info_t *pDsv = (dsv_info_t *)e.second;
+                dsv_info_t *pDsv = (dsv_info_t *)dsv_info;
                 rep->length += DSV_Value2Str( rep_data,
                                               DSV_STRING_SIZE_MAX,
                                               pDsv );
@@ -398,13 +396,13 @@ int var_notify( char *sub_buf, char *fwd_buf )
     if( sub_flag == 1 )
     {
         /* fill the forward buffer */
-        std::string full_name( &sub_buf[1] );
+        char *full_name( &sub_buf[1] );
         auto e = g_map.find( full_name );
         if( e != g_map.end() )
         {
             dsv_info_t *pDsv = (dsv_info_t *)e->second;
-            printf( "Subscribe %s\n", full_name.c_str() );
-            fill_fwd_buf( full_name.c_str(), pDsv, fwd_buf );
+            printf( "Subscribe %s\n", full_name );
+            fill_fwd_buf( full_name, pDsv, fwd_buf );
             rc = 0;
         }
     }

@@ -107,7 +107,7 @@ static void usage( void )
     0 - success
     others - failed
 /*============================================================================*/
-int ProcessSub( int argc, char **argv )
+static int ProcessSub( int argc, char **argv )
 {
     int rc = EINVAL;
     for(; optind < argc; ++optind )
@@ -185,7 +185,7 @@ int ProcessSub( int argc, char **argv )
     0 - success
     others - failed
 /*============================================================================*/
-int ProcessGet( int argc, char **argv )
+static int ProcessGet( int argc, char **argv )
 {
     int rc = EINVAL;
     char value[DSV_STRING_SIZE_MAX];
@@ -232,7 +232,7 @@ int ProcessGet( int argc, char **argv )
     0 - success
     others - failed
 /*============================================================================*/
-int ProcessSet( int argc, char **argv )
+static int ProcessSet( int argc, char **argv )
 {
     int rc = EINVAL;
     if( optind == argc - 2 )
@@ -278,7 +278,7 @@ int ProcessSet( int argc, char **argv )
     0 - success
     others - failed
 /*============================================================================*/
-int ProcessCreate( int argc, char **argv )
+static int ProcessCreate( int argc, char **argv )
 {
     int rc = EINVAL;
     if( g_state.json_file == NULL )
@@ -324,7 +324,7 @@ int ProcessCreate( int argc, char **argv )
     0 - success
     others - failed
 /*============================================================================*/
-int ProcessOptions( int argc, char **argv )
+static int ProcessOptions( int argc, char **argv )
 {
     int rc = 0;
     int opt;
@@ -499,6 +499,13 @@ int main( int argc, char *argv[] )
         if( g_state.dsv.value.pStr )
         {
             free( g_state.dsv.value.pStr );
+        }
+    }
+    if( g_state.dsv.type == DSV_TYPE_INT_ARRAY )
+    {
+        if( g_state.dsv.value.pArray )
+        {
+            free( g_state.dsv.value.pArray );
         }
     }
 

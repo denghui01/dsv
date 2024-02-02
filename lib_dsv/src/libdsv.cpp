@@ -77,30 +77,25 @@ typedef struct dsv_context
 @param[in]
     ctx
         dsv ctx ( returned by DSV_Open() )
-
 @param[in]
-    mbuf
-        message buffer
-
+    req_buf
+        request message buffer
 @param[in]
-    mlen
-        message buffer length
-
+    req_len
+        request message buffer length
 @param[in]
-    vbuf
-        value buffer if it is not NULL
-
+    rep_buf
+        reply message buffer if it is not NULL
 @param[in]
-    vlen
-        length of the value buffer
-
+    rep_len
+        length of the reply message buffer
 @return
     0 - success
     any other value specifies an error code (see errno.h)
 
 ==============================================================================*/
 static int dsv_SendMsg( void *ctx,
-                        void *req_buf,
+                        const void *req_buf,
                         size_t req_len,
                         void *rep_buf,
                         size_t rep_len )
@@ -113,7 +108,12 @@ static int dsv_SendMsg( void *ctx,
     dsv_msg_reply_t *rep = (dsv_msg_reply_t *)rep_buf;
     dsv_context_t *dsv_ctx = (dsv_context_t *)ctx;
 
-    if( req->type == DSV_MSG_CREATE || req->type == DSV_MSG_SET )
+    if( req->type == DSV_MSG_CREATE ||
+        req->type == DSV_MSG_SET ||
+        req->type == DSV_MSG_INS_ITEM ||
+        req->type == DSV_MSG_DEL_ITEM ||
+        req->type == DSV_MSG_ADD_ITEM ||
+        req->type == DSV_MSG_SET_ITEM )
     {
         /* create and set only use pub/sub pattern */
         rc = zmq_send( dsv_ctx->sock_publish, req_buf, req_len, 0 );
@@ -130,7 +130,8 @@ static int dsv_SendMsg( void *ctx,
     else if( req->type == DSV_MSG_GET_HANDLE ||
              req->type == DSV_MSG_GET_TYPE   ||
              req->type == DSV_MSG_GET ||
-             req->type == DSV_MSG_GET_NEXT )
+             req->type == DSV_MSG_GET_NEXT ||
+             req->type == DSV_MSG_GET_ITEM)
     {
         if( req_buf != NULL )
         {
@@ -159,16 +160,34 @@ static int dsv_SendMsg( void *ctx,
     return 0;
 }
 
+/*!=============================================================================
+
+    Recv a message from the server, used in querying the notifications
+
+@param[in]
+    ctx
+        dsv ctx ( returned by DSV_Open() )
+@param[in]
+    sub_buf
+        subscribe message buffer
+@param[in]
+    sub_len
+        subscribe message buffer length
+@return
+    0 - success
+    any other value specifies an error code (see errno.h)
+
+==============================================================================*/
 static int dsv_RecvMsg( void *ctx,
                         void *sub_buf,
-                        size_t size )
+                        size_t sub_len )
 {
     assert( ctx );
     assert( sub_buf );
 
     int rc;
     dsv_context_t *dsv_ctx = (dsv_context_t *)ctx;
-    rc = zmq_recv( dsv_ctx->sock_subscribe, sub_buf, size, 0 );
+    rc = zmq_recv( dsv_ctx->sock_subscribe, sub_buf, sub_len, 0 );
     if( rc == -1 )
     {
         syslog( LOG_ERR, "zmq_recv failed: %s", zmq_strerror( errno ) );
@@ -183,15 +202,12 @@ static int dsv_RecvMsg( void *ctx,
 @param[in]
     file
         JSON file name
-
 @param[in]
     buf
         buffer to hold the JSON file content
-
 @param[in]
     size
         size of buffer
-
 @return
     0 - success
     others - failed
@@ -249,36 +265,33 @@ static int dsv_ReadJsonFile( const char *file, char *buf, size_t size )
 @param[in]
     ctx
         dsv ctx ( returned by DSV_Open() )
-
 @param[in]
     instID
-        dsv instance ID passed by the creator, normally device instance ID
-
+        dsv instance ID passed by the creator, normally device GUID
 @param[in]
     buf
         pointer to the JSON string
-
 @return
     0 - success
     others - failed
 
 ==============================================================================*/
-static int dsv_ParseJsonStr( void *ctx, uint32_t instID, char *buf )
+static int dsv_ParseJsonStr( void *ctx, uint32_t instID, const char *buf )
 {
     assert( ctx );
     assert( buf );
 
     dsv_info_t dsv = { 0 };
     int rc = EINVAL;
-    int n;
+    int array_size;
     int i;
     cJSON *e;
     cJSON *m;
     cJSON *root = cJSON_Parse( buf );
-    n = cJSON_GetArraySize( root );
+    array_size = cJSON_GetArraySize( root );
     dsv.instID = instID;
 
-    for( i = 0; i < n; i++ )
+    for( i = 0; i < array_size; i++ )
     {
         e = cJSON_GetArrayItem( root, i );
 
@@ -364,7 +377,50 @@ static int dsv_ParseJsonStr( void *ctx, uint32_t instID, char *buf )
     return rc;
 }
 
+/*!=============================================================================
 
+    This function fills the request buffer with hndl
+    The request buffer is a data structure:
+    +-----------------------+
+    | type: DSV_MSG_SET     |
+    +-----------------------+
+    | length                |
+    +-----------------------+
+    | instID                |
+    +-----------------------+
+    | handle (dsv_info_t *) |
+    +-----------------------+
+
+@param[in]
+    dest
+        destination buffer
+
+@param[in]
+    dsv
+        pointer of dsv information structure, holding type, len and value
+
+@return
+    positive number - number of bytes copied
+    -1 - failed
+
+==============================================================================*/
+static int fill_req_buf(char *req_buf, int type, const void *hndl)
+{
+    assert(req_buf);
+    assert(hndl);
+
+    dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
+    char *req_data = req->data;
+
+    req->type = type;
+    req->instID = -1; // no use
+    req->length = sizeof(dsv_msg_request_t);
+
+    memcpy( req_data, &hndl, sizeof(hndl) );
+    req->length += sizeof(hndl);
+
+    return sizeof(hndl);
+}
 /*!=============================================================================
 
     As a client, it creates zmq client and subscriber socket and connect them
@@ -378,7 +434,7 @@ void* DSV_Open( void )
 {
     dsv_context_t *ctx = NULL;
     int rc;
-    char server_ip[64];
+    char server_ip[64] = {0};
     char reply_url[DSV_STRING_SIZE_MAX];
     char frontend_url[DSV_STRING_SIZE_MAX];
     char backend_url[DSV_STRING_SIZE_MAX];
@@ -389,6 +445,7 @@ void* DSV_Open( void )
         return NULL;
     }
 
+    assert(server_ip[0]);
     snprintf( frontend_url, DSV_STRING_SIZE_MAX, "tcp://%s:56789", server_ip );
     snprintf( backend_url, DSV_STRING_SIZE_MAX, "tcp://%s:56788", server_ip );
     snprintf( reply_url, DSV_STRING_SIZE_MAX, "tcp://%s:56787", server_ip );
@@ -436,7 +493,7 @@ void* DSV_Open( void )
         syslog( LOG_ERR, "Failed to call zmq_connect: %s", strerror( errno ) );
         goto error;
     }
-    /*now just wait 100ms for publish connected to endpoint */
+    /*now just wait 100ms for publisher connected to endpoint */
     usleep( 100000 );
 
     /* subscribe socket */
@@ -509,21 +566,18 @@ void DSV_Close( void *ctx )
 @param[in]
     ctx
         dsv ctx ( returned by DSV_Open() )
-
 @param[in]
     instID
-        dsv instance ID passed by the creator, normally device instance ID
-
+        dsv instance ID passed by the creator, normally device short GUID
 @param[in]
-    pInfo
-        pointer to the dsv information JSON string
-
+    file
+        JSON file name
 @return
     0 - success
     any other value specifies an error code (see errno.h)
 
 ==============================================================================*/
-int DSV_CreateWithJson( void *ctx, uint32_t instID, char *file )
+int DSV_CreateWithJson( void *ctx, uint32_t instID, const char *file )
 {
     assert( ctx );
     assert( file );
@@ -551,29 +605,15 @@ int DSV_CreateWithJson( void *ctx, uint32_t instID, char *file )
     This function requests dsv server to create one dsv with dsv_info_t
     structure.
 
-    The message buffer structure:
-    +===============================+
-    |        dsv_msg_create         |
-    +===============================+
-    | common(type, length, instID)  |
-    +-------------------------------+
-    | dsv_info_t                    |
-    +-------------------------------+
-    | data: name, desc, tags, value |
-    +-------------------------------+
-
 @param[in]
     ctx
         dsv ctx ( returned by DSV_Open() )
-
 @param[in]
     instID
         dsv instance ID passed by the creator, normally device instance ID
-
 @param[in]
     pDsv
         pointer to the dsv information of dsv_info_t structure
-
 @return
     0 - success
     any other value specifies an error code (see errno.h)
@@ -636,27 +676,16 @@ int DSV_Create( void *ctx, uint32_t instID, dsv_info_t *pDsv )
 /*!=============================================================================
 
     Query the dsv handle from dsv server database by dsv name and instID.
-    The message buffer structure:
-    +==============================+
-    |    dsv_msg_get_handle        |
-    +==============================+
-    | common(type, length, instID) |
-    +------------------------------+
-    | data: name                   |
-    +------------------------------+
 
 @param[in]
     ctx
         dsv ctx ( returned by DSV_Open() )
-
 @param[in]
     instID
         dsv instance ID passed by the creator, normally device instance ID
-
 @param[in]
     name
         pointer to a NULL terminated dsv namne string
-
 @return
     a handle to the dsv in the dsv server,
     NULL if not found.
@@ -698,19 +727,10 @@ void* DSV_Handle( void *ctx, uint32_t instID, const char *name )
 /*!=============================================================================
 
     Query the dsv type from dsv server by handle.
-    The message buffer structure:
-    +==============================+
-    |         dsv_msg_type         |
-    +==============================+
-    | common(type, length, instID) |
-    +------------------------------+
-    | data: handle                 |
-    +------------------------------+
 
 @param[in]
     ctx
         dsv ctx ( returned by DSV_Open() )
-
 @param[in]
     hndl
         dsv handle in server process
@@ -735,12 +755,7 @@ int DSV_Type( void *ctx, void *hndl )
     dsv_msg_reply_t *rep = (dsv_msg_reply_t *)rep_buf;
     char *rep_data = rep->data;
 
-    req->type = DSV_MSG_GET_TYPE;
-    req->instID = -1; // no use
-    req->length = sizeof(dsv_msg_request_t);
-
-    *(void **)req_data = hndl;
-    req->length += sizeof(hndl);
+    fill_req_buf(req_buf, DSV_MSG_GET_TYPE, hndl);
 
     rc = dsv_SendMsg( ctx, req_buf, req->length, rep_buf, sizeof(rep_buf) );
     if( rc != 0 )
@@ -762,19 +777,15 @@ int DSV_Type( void *ctx, void *hndl )
 @param[in]
     ctx
         dsv ctx ( returned by DSV_Open() )
-
 @param[in]
     instID
         dsv instance ID passed by the creator, normally device instance ID
-
 @param[in]
     name
         dsv name string terminated by NULL byte
-
 @param[in]
     value
         dsv value as string
-
 @return
     0 - success
     any other value specifies an error code (see errno.h)
@@ -808,21 +819,18 @@ int DSV_SetByName( void *ctx, uint32_t instID, const char *name, char *value )
 @param[in]
     ctx
         dsv ctx ( returned by DSV_Open() )
-
 @param[in]
     hndl
         dsv handle in server process
-
 @param[in]
     value
         dsv value in string form
-
 @return
     0 - success
     any other value specifies an error code (see errno.h)
 
 ==============================================================================*/
-int DSV_SetThruStr( void *ctx, void *hndl, char *value )
+int DSV_SetThruStr( void *ctx, void *hndl, const char *value )
 {
     assert( ctx );
     assert( hndl );
@@ -837,18 +845,19 @@ int DSV_SetThruStr( void *ctx, void *hndl, char *value )
     }
 
     dsv_info_t dsv;
+    size_t size;
+    void *data;
     switch( type )
     {
     case DSV_TYPE_STR:
         rc = DSV_Set( ctx, hndl, value );
         break;
     case DSV_TYPE_INT_ARRAY:
-        dsv.type = type;
-        rc = DSV_Str2Array(value, &dsv);
+        rc = DSV_Str2Array(value, &data, &size);
         if( rc == 0 )
         {
-            rc = DSV_Set( ctx, hndl, &dsv );
-            free( dsv.value.pArray );
+            rc = DSV_Set( ctx, hndl, data, size );
+            free( data );
         }
         break;
     case DSV_TYPE_UINT16:
@@ -901,14 +910,6 @@ int DSV_SetThruStr( void *ctx, void *hndl, char *value )
 
 /**
  * Set value for string type of dsv
- * message buffer data structure:
- * +==============================+
- * |         dsv_msg_set          |
- * +==============================+
- * | common(type, length, instID) |
- * +------------------------------+
- * | data:handle, value, ...      |
- * +------------------------------+
  */
 int DSV_Set( void *ctx, void *hndl, char *value )
 {
@@ -921,14 +922,8 @@ int DSV_Set( void *ctx, void *hndl, char *value )
     dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
     char *req_data = req->data;
 
-    req->type = DSV_MSG_SET;
-    req->instID = -1; // no use
-    req->length = sizeof(dsv_msg_request_t);
-
-    memcpy( req_data, &hndl, sizeof(hndl) );
-    req->length += sizeof(hndl);
-    req_data += sizeof(hndl);
-
+    rc = fill_req_buf(req_buf, DSV_MSG_SET, hndl);
+    req_data += rc;
     strncpy( req_data, value, DSV_STRING_SIZE_MAX );
     req->length += strlen( req_data ) + 1;
 
@@ -942,27 +937,24 @@ int DSV_Set( void *ctx, void *hndl, char *value )
     return rc;
 }
 
-int DSV_Set( void *ctx, void *hndl, dsv_info_t *dsv )
+/**
+ * Set value for int array type of dsv
+ */
+int DSV_Set( void *ctx, void *hndl, void *data, size_t size )
 {
     assert( ctx );
     assert( hndl );
-    assert( dsv );
+    assert( data );
 
     int rc = EINVAL;
     char req_buf[BUFSIZE];
     dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
     char *req_data = req->data;
 
-    req->type = DSV_MSG_SET;
-    req->instID = -1; // no use
-    req->length = sizeof(dsv_msg_request_t);
-
-    memcpy( req_data, &hndl, sizeof(hndl) );
-    req->length += sizeof(hndl);
-    req_data += sizeof(hndl);
-
-    memcpy( req_data, dsv->value.pArray, dsv->len );
-    req->length += dsv->len;
+    rc = fill_req_buf(req_buf, DSV_MSG_SET, hndl);
+    req_data += rc;
+    memcpy( req_data, data, size );
+    req->length += size;
 
     rc = dsv_SendMsg( ctx, req_buf, req->length, NULL, 0 );
     if( rc != 0 )
@@ -975,15 +967,7 @@ int DSV_Set( void *ctx, void *hndl, dsv_info_t *dsv )
 }
 
 /**
- * Set value for string type of dsv
- * message buffer data structure:
- * +==============================+
- * |         dsv_msg_set          |
- * +==============================+
- * | common(type, length, instID) |
- * +------------------------------+
- * | data:handle, value, ...      |
- * +------------------------------+
+ * Set value for numeric type of dsv
  */
 template< typename T >
 int DSV_Set( void *ctx, void *hndl, T value )
@@ -996,14 +980,8 @@ int DSV_Set( void *ctx, void *hndl, T value )
     dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
     char *req_data = req->data;
 
-    req->type = DSV_MSG_SET;
-    req->instID = -1; // no use
-    req->length = sizeof(dsv_msg_request_t);
-
-    memcpy( req_data, &hndl, sizeof(hndl) );
-    req->length += sizeof(hndl);
-    req_data += sizeof(hndl);
-
+    rc = fill_req_buf(req_buf, DSV_MSG_SET, hndl);
+    req_data += rc;
     memcpy( req_data, &value, sizeof(value) );
     req->length += sizeof(value);
 
@@ -1203,9 +1181,8 @@ int DSV_GetThruStr( void *ctx, void *hndl, char *value, size_t size )
     switch( type )
     {
     case DSV_TYPE_STR:
-        rc = DSV_Get( ctx, hndl, value, size );
-        break;
     case DSV_TYPE_INT_ARRAY:
+        rc = DSV_Get( ctx, hndl, value, size );
         break;
     case DSV_TYPE_UINT16:
         uint16_t u16;
@@ -1269,14 +1246,6 @@ int DSV_GetThruStr( void *ctx, void *hndl, char *value, size_t size )
 
 /**
  * Get value for string type of dsv
- * message buffer data structure:
- * +==============================+
- * |         dsv_msg_get          |
- * +==============================+
- * | common(type, length, instID) |
- * +------------------------------+
- * | data:handle, ...      |
- * +------------------------------+
  */
 int DSV_Get( void *ctx, void *hndl, char *value, size_t size )
 {
@@ -1293,12 +1262,7 @@ int DSV_Get( void *ctx, void *hndl, char *value, size_t size )
     dsv_msg_reply_t *rep = (dsv_msg_reply_t *)rep_buf;
     char *rep_data = rep->data;
 
-    req->type = DSV_MSG_GET;
-    req->instID = -1; // no use
-    req->length = sizeof(dsv_msg_request_t);
-
-    memcpy( req_data, &hndl, sizeof(hndl) );
-    req->length += sizeof(hndl);
+    fill_req_buf(req_buf, DSV_MSG_GET, hndl);
 
     rc = dsv_SendMsg( ctx, req_buf, req->length, rep_buf, sizeof(rep_buf) );
     if( rc != 0 )
@@ -1312,14 +1276,6 @@ int DSV_Get( void *ctx, void *hndl, char *value, size_t size )
 
 /**
  * Get value for numeric type of dsv
- * message buffer data structure:
- * +==============================+
- * |         dsv_msg_get          |
- * +==============================+
- * | common(type, length, instID) |
- * +------------------------------+
- * | data:handle, ...      |
- * +------------------------------+
  */
 template< typename T >
 int DSV_Get( void *ctx, void *hndl, T *value )
@@ -1337,12 +1293,7 @@ int DSV_Get( void *ctx, void *hndl, T *value )
     dsv_msg_reply_t *rep = (dsv_msg_reply_t *)rep_buf;
     char *rep_data = rep->data;
 
-    req->type = DSV_MSG_GET;
-    req->instID = -1; // no use
-    req->length = sizeof(dsv_msg_request_t);
-
-    memcpy( req_data, &hndl, sizeof(hndl) );
-    req->length += sizeof(hndl);
+    fill_req_buf(req_buf, DSV_MSG_GET, hndl);
 
     rc = dsv_SendMsg( ctx, req_buf, req->length, rep_buf, sizeof(rep_buf) );
     if( rc != 0 )
@@ -1399,5 +1350,29 @@ int DSV_GetNotification( void *ctx,
     return rc;
 }
 
+int DSV_InsItemToArray( void *ctx, void *hndl, int index, int value )
+{
+    assert(ctx);
+    assert(hndl);
+
+    int rc = EINVAL;
+    char req_buf[BUFSIZE];
+    dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
+    char *req_data = req->data;
+
+    rc = req_buf(req_buf, DSV_MSG_INS_ITEM, hndl);
+    req_data += rc;
+    *(int *)req_data = value;
+    req->length += sizeof(value);
+
+    rc = dsv_SendMsg( ctx, req_buf, req->length, NULL, 0 );
+    if( rc != 0 )
+    {
+        syslog( LOG_ERR, "Failed to send message to the server" );
+        return EFAULT;
+    }
+
+    return rc;
+}
 /* end of libsysvars group */
 
