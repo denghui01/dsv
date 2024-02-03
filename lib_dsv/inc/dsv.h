@@ -173,6 +173,9 @@ void *DSV_Handle( void *ctx, uint32_t instID, const char *name );
 /* query the type of dsv */
 int DSV_Type( void *ctx, void *hndl );
 
+/* query the length of dsv */
+size_t DSV_Len( void *ctx, void *hndl );
+
 /* the value set is in string form, no matter the real type of dsv */
 int DSV_SetThruStr( void *ctx, void *hndl, const char *value );
 

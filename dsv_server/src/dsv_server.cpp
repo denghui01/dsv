@@ -170,6 +170,11 @@ static int dsv_handle_reply()
         rep->result = rc;
         break;
 
+    case DSV_MSG_GET_LEN:
+        rc = var_get_len( req_buf, rep_buf );
+        rep->result = rc;
+        break;
+
     case DSV_MSG_GET:
         rc = var_get( req_buf, rep_buf );
         rep->result = rc;
@@ -177,6 +182,11 @@ static int dsv_handle_reply()
 
     case DSV_MSG_GET_NEXT:
         rc = var_get_next( req_buf, rep_buf );
+        rep->result = rc;
+        break;
+
+    case DSV_MSG_GET_ITEM:
+        rc = var_get_item( req_buf, rep_buf );
         rep->result = rc;
         break;
 

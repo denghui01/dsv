@@ -33,6 +33,8 @@ SOFTWARE.
 #include "dsv.h"
 #include "dsv_msg.h"
 
+using dsv_array_t = std::vector<int>;
+
 /*!=============================================================================
 
     This function allocates the memory and copy the content from source buffer
@@ -86,7 +88,6 @@ int DSV_Memcpy( void *dest, dsv_info_t *dsv )
     assert( dsv );
 
     int rc = 0;
-    void *pData = dest;
     if( dsv->type == DSV_TYPE_STR )
     {
         strcpy( (char *)dest, dsv->value.pStr );
@@ -94,7 +95,9 @@ int DSV_Memcpy( void *dest, dsv_info_t *dsv )
     }
     else if( dsv->type == DSV_TYPE_INT_ARRAY )
     {
-        memcpy( pData, dsv->value.pArray, dsv->len );
+        memcpy( dest,
+                ((dsv_array_t *)dsv->value.pArray)->data(),
+                dsv->len );
         rc += dsv->len;
     }
     else
@@ -253,16 +256,14 @@ int DSV_Array2Str( char *buf, size_t len, const dsv_info_t *pDsv )
     assert( buf );
 
     int rc = -1;
-    int i;
-    int *ai;
-
+    dsv_array_t *ai;
     if( pDsv->type == DSV_TYPE_INT_ARRAY )
     {
-        ai = (int *)pDsv->value.pArray;
+        ai = (dsv_array_t *)pDsv->value.pArray;
         rc = 0;
-        for( i = 0; i < pDsv->len / sizeof(int); ++i )
+        for( auto i : *ai )
         {
-            rc += snprintf( buf + rc, len - rc, "%d,", ai[i] );
+            rc += snprintf( buf + rc, len - rc, "%d,", i );
         }
         buf[rc - 1] = '\0';
     }

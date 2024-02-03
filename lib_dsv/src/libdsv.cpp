@@ -129,6 +129,7 @@ static int dsv_SendMsg( void *ctx,
     }
     else if( req->type == DSV_MSG_GET_HANDLE ||
              req->type == DSV_MSG_GET_TYPE   ||
+             req->type == DSV_MSG_GET_LEN ||
              req->type == DSV_MSG_GET ||
              req->type == DSV_MSG_GET_NEXT ||
              req->type == DSV_MSG_GET_ITEM)
@@ -766,6 +767,49 @@ int DSV_Type( void *ctx, void *hndl )
     type = *(int *)rep_data;
     return type;
 }
+
+/*!=============================================================================
+
+    Query the dsv len from dsv server by handle. (Used for array type of dsv)
+
+@param[in]
+    ctx
+        dsv ctx ( returned by DSV_Open() )
+@param[in]
+    hndl
+        dsv handle in server process
+@return
+    0 or positive number: type
+    -1 if not found.
+
+==============================================================================*/
+size_t DSV_Len( void *ctx, void *hndl )
+{
+    assert( ctx );
+    assert( hndl );
+
+    int rc = EINVAL;
+    size_t len = 0;
+
+    char req_buf[BUFSIZE];
+    dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
+    char *req_data = req->data;
+
+    char rep_buf[BUFSIZE];
+    dsv_msg_reply_t *rep = (dsv_msg_reply_t *)rep_buf;
+    char *rep_data = rep->data;
+
+    fill_req_buf(req_buf, DSV_MSG_GET_LEN, hndl);
+
+    rc = dsv_SendMsg( ctx, req_buf, req->length, rep_buf, sizeof(rep_buf) );
+    if( rc != 0 )
+    {
+        syslog( LOG_ERR, "Failed to send message to the server" );
+        return EFAULT;
+    }
+    len = *(size_t *)rep_data;
+    return len;
+}
 /*!=============================================================================
 
     This function request dsv server to update dsv with value.
@@ -1360,7 +1404,7 @@ int DSV_InsItemToArray( void *ctx, void *hndl, int index, int value )
     dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
     char *req_data = req->data;
 
-    rc = req_buf(req_buf, DSV_MSG_INS_ITEM, hndl);
+    rc = fill_req_buf(req_buf, DSV_MSG_INS_ITEM, hndl);
     req_data += rc;
     *(int *)req_data = value;
     req->length += sizeof(value);

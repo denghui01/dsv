@@ -48,6 +48,7 @@ typedef enum dsv_operation
     DSV_SUB
 }dsv_op_t;
 
+using dsv_array_t = std::vector<int>;
 
 struct state
 {
@@ -145,11 +146,30 @@ static int ProcessSub( int argc, char **argv )
             {
                 sscanf( full_name, "[%d]%s", &instID, name );
                 dsv_info_t dsv;
-                dsv.type = DSV_Type( g_state.dsv_ctx,
-                                     DSV_Handle( g_state.dsv_ctx, instID, name ) );
+                void *hndl = DSV_Handle( g_state.dsv_ctx, instID, name );
+                assert(hndl);
+                dsv.type = DSV_Type( g_state.dsv_ctx, hndl);
                 if( dsv.type == DSV_TYPE_STR )
                 {
                     printf( "%s=%s\n", full_name, value );
+                }
+                else if( dsv.type == DSV_TYPE_INT_ARRAY )
+                {
+                    dsv.len = DSV_Len(g_state.dsv_ctx, hndl);
+                    dsv_array_t ai((int *)value, (int *)(value + dsv.len) );
+                    printf( "%s=", full_name );
+                    for(int i = 0; i < ai.size(); i++)
+                    {
+                        if( i != ai.size() - 1 )
+                        {
+                            printf( "%d,", ai[i] );
+                        }
+                        else
+                        {
+                            printf( "%d\n", ai[i] );
+                        }
+
+                    }
                 }
                 else
                 {

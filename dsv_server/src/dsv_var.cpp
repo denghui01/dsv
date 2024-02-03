@@ -33,6 +33,8 @@ SOFTWARE.
 #include <assert.h>
 #include <errno.h>
 #include <unordered_map>
+#include <vector>
+#include <memory>
 #include <string>
 #include <sstream>
 #include "zmq.h"
@@ -40,7 +42,8 @@ SOFTWARE.
 #include "dsv_msg.h"
 
 /*! hasp table to hold the dsv name and dsv info data */
-std::unordered_map< std::string, void * > g_map;
+std::unordered_map<std::string, void *> g_map;
+using dsv_array_t = std::vector<int>;
 
 /*==============================================================================
                               Defines
@@ -107,7 +110,7 @@ int var_create( const char *req_buf, char *fwd_buf )
     assert( fwd_buf );
     printf( "Enter %s\n", __func__ );
 
-    int rc = 0;
+    int rc = EINVAL;
     struct timespec now = { 0 };
     dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
     char *req_data = req->data;
@@ -137,7 +140,10 @@ int var_create( const char *req_buf, char *fwd_buf )
         }
         else if( dsv->type == DSV_TYPE_INT_ARRAY )
         {
-            dsv->value.pArray = memdup( req_data, dsv->len );
+//          dsv->value.pArray = memdup( req_data, dsv->len );
+            dsv->value.pArray = static_cast<void *>(
+                new dsv_array_t( (int *)req_data,
+                                 (int *)(req_data + dsv->len) ) );
         }
 
         std::stringstream ss;
@@ -148,6 +154,7 @@ int var_create( const char *req_buf, char *fwd_buf )
         {
             g_map.insert( std::make_pair( full_name, (void *)dsv ) );
             fill_fwd_buf( full_name.c_str(), dsv, fwd_buf );
+            rc = 0;
         }
         else
         {
@@ -156,7 +163,7 @@ int var_create( const char *req_buf, char *fwd_buf )
         }
     }
 
-    if( rc != 0 )
+    if( rc == EEXIST )
     {
         free( dsv->pName );
         free( dsv->pDesc );
@@ -190,40 +197,40 @@ int var_set( const char *req_buf, char *fwd_buf )
     assert( fwd_buf );
     printf( "Enter %s\n", __func__ );
 
-    int rc = 0;
+    int rc = EINVAL;
     struct timespec now = { 0 };
     char full_name[DSV_STRING_SIZE_MAX];
     dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
     char *req_data = req->data;
 
-    dsv_info_t *pDsv = *(dsv_info_t **)req_data;
+    dsv_info_t *dsv = *(dsv_info_t **)req_data;
     req_data += sizeof(dsv_info_t *);
-    if( pDsv != NULL )
+    if( dsv != NULL )
     {
-        snprintf( full_name, DSV_STRING_SIZE_MAX, "[%d]%s", pDsv->instID, pDsv->pName );
+        snprintf( full_name, DSV_STRING_SIZE_MAX, "[%d]%s", dsv->instID, dsv->pName );
         clock_gettime( CLOCK_REALTIME, &now );
-        pDsv->timestamp = now;
-        if( pDsv->type == DSV_TYPE_STR )
+        dsv->timestamp = now;
+        if( dsv->type == DSV_TYPE_STR )
         {
-            free( pDsv->value.pStr );
-            pDsv->value.pStr = strdup( req_data );
+            free( dsv->value.pStr );
+            dsv->value.pStr = strdup( req_data );
         }
-        else if( pDsv->type == DSV_TYPE_INT_ARRAY )
+        else if( dsv->type == DSV_TYPE_INT_ARRAY )
         {
-            free( pDsv->value.pArray );
-            pDsv->value.pArray = memdup( req_data, pDsv->len );
+//          free( dsv->value.pArray );
+//          dsv->value.pArray = memdup( req_data, dsv->len );
+            delete (dsv_array_t *)dsv->value.pArray;
+            dsv->value.pArray = static_cast<void *>
+                (new dsv_array_t( (int *)req_data,
+                                  (int *)(req_data + dsv->len) ) );
         }
         else
         {
-            memcpy( &pDsv->value, req_data, sizeof(dsv_value_t) );
+            memcpy( &dsv->value, req_data, sizeof(dsv_value_t) );
         }
 
-        fill_fwd_buf( full_name, pDsv, fwd_buf );
+        fill_fwd_buf( full_name, dsv, fwd_buf );
         rc = 0;
-    }
-    else
-    {
-        rc = EINVAL;
     }
     return rc;
 }
@@ -244,7 +251,7 @@ int var_get_handle( const char *req_buf, char *rep_buf )
     assert( rep_buf );
     printf( "Enter %s\n", __func__ );
 
-    int rc = 0;
+    int rc = EINVAL;
     dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
     char *req_data = req->data;
 
@@ -256,12 +263,7 @@ int var_get_handle( const char *req_buf, char *rep_buf )
     ss << "[" << req->instID << "]" << req_data;
     std::string full_name = ss.str();
     auto e = g_map.find( full_name );
-    if( e == g_map.end() )
-    {
-        printf( "Unable to find the sysvar %s\n", full_name.c_str() );
-        rc = EINVAL;
-    }
-    else
+    if( e != g_map.end() )
     {
         *(void **)rep_data = e->second;
         rc = 0;
@@ -286,7 +288,7 @@ int var_get_type( const char *req_buf, char *rep_buf )
     assert( rep_buf );
     printf( "Enter %s\n", __func__ );
 
-    int rc = 0;
+    int rc = EINVAL;
     dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
     char *req_data = req->data;
 
@@ -301,13 +303,42 @@ int var_get_type( const char *req_buf, char *rep_buf )
         rc = 0;
         rep->length += sizeof(int);
     }
-    else
-    {
-        rc = EINVAL;
-    }
     return rc;
 }
 
+/**
+ *
+ * +==============================+
+ * |    dsv_msg_get_handle        |
+ * +==============================+
+ * | common(type, length, instID) |
+ * +------------------------------+
+ * | data: name                   |
+ *   +------------------------------+
+ */
+int var_get_len( const char *req_buf, char *rep_buf )
+{
+    assert( req_buf );
+    assert( rep_buf );
+    printf( "Enter %s\n", __func__ );
+
+    int rc = EINVAL;
+    dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
+    char *req_data = req->data;
+
+    dsv_msg_reply_t *rep = (dsv_msg_reply_t *)rep_buf;
+    char *rep_data = rep->data;
+    rep->length = sizeof(dsv_msg_reply_t);
+
+    dsv_info_t *pDsv = *(dsv_info_t **)req_data;
+    if( pDsv != NULL )
+    {
+        *(size_t *)rep_data = pDsv->len;
+        rc = 0;
+        rep->length += sizeof(size_t);
+    }
+    return rc;
+}
 
 int var_get( const char *req_buf, char *rep_buf )
 {
@@ -315,7 +346,7 @@ int var_get( const char *req_buf, char *rep_buf )
     assert( rep_buf );
     printf( "Enter %s\n", __func__ );
 
-    int rc = 0;
+    int rc = EINVAL;
     dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
     char *req_data = req->data;
 
@@ -329,13 +360,84 @@ int var_get( const char *req_buf, char *rep_buf )
         rep->length += DSV_Memcpy( rep_data, pDsv );
         rc = 0;
     }
-    else
+    return rc;
+}
+
+int var_get_item( const char *req_buf, char *rep_buf )
+{
+    assert( req_buf );
+    assert( rep_buf );
+    printf( "Enter %s\n", __func__ );
+
+    int rc = EINVAL;
+    dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
+    char *req_data = req->data;
+
+    dsv_msg_reply_t *rep = (dsv_msg_reply_t *)rep_buf;
+    char *rep_data = rep->data;
+    rep->length = sizeof(dsv_msg_reply_t);
+
+    dsv_info_t *pDsv = *(dsv_info_t **)req_data;
+    int index = *(int *)(req_data + sizeof(dsv_info_t *));
+    if( pDsv != NULL && pDsv->type == DSV_TYPE_INT_ARRAY )
     {
-        rc = EINVAL;
+//      int *ai = pDsv->value.pArray;
+//      *(int *)rep_data = ai[index];
+//      rep->length += sizeof(int);
+        rc = 0;
     }
     return rc;
 }
 
+int var_set_item( const char *req_buf, char *rep_buf )
+{
+    assert( req_buf );
+    assert( rep_buf );
+    printf( "Enter %s\n", __func__ );
+
+    int rc = EINVAL;
+    dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
+    char *req_data = req->data;
+
+    dsv_info_t *pDsv = *(dsv_info_t **)req_data;
+    req_data += sizeof(pDsv);
+    int index = *(int *)req_data;
+    req_data += sizeof(index);
+    int value = *(int *)req_data;
+
+    if( pDsv != NULL && pDsv->type == DSV_TYPE_INT_ARRAY )
+    {
+//      int *ai = pDsv->value.pArray;
+//      ai[index] = value;
+        rc = 0;
+    }
+    return rc;
+}
+
+int var_ins_item( const char *req_buf, char *rep_buf )
+{
+    assert( req_buf );
+    assert( rep_buf );
+    printf( "Enter %s\n", __func__ );
+
+    int rc = EINVAL;
+    dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
+    char *req_data = req->data;
+
+    dsv_info_t *pDsv = *(dsv_info_t **)req_data;
+    req_data += sizeof(pDsv);
+    int index = *(int *)req_data;
+    req_data += sizeof(index);
+    int value = *(int *)req_data;
+
+    if( pDsv != NULL && pDsv->type == DSV_TYPE_INT_ARRAY )
+    {
+        //std::vector<int> vi(pDsv->value.pArray);
+        //ai[index] = value;
+        rc = 0;
+    }
+    return rc;
+}
 
 int var_get_next( const char *req_buf, char *rep_buf )
 {
