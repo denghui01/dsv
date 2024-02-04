@@ -60,7 +60,6 @@ typedef struct dsv_msg_request
 {
     int         type;
     size_t      length;
-    uint32_t    instID;
     char        data[0];
 }dsv_msg_request_t;
 
@@ -77,86 +76,4 @@ typedef struct dsv_msg_forward
     char        data[0];
 }dsv_msg_forward_t;
 
-#if 0
-#define dsv_comm_msg_def struct {\
-    size_t length; \
-    int type; \
-    uint32_t instID; }
-
-typedef dsv_comm_msg_def dsv_comm_msg_t;
-
-/*! The dsv_msg_create_t message is passed to the server to request the
- * creation of a new system variable.
- */
-typedef struct
-{
-    /*! Common party of the message */
-    dsv_comm_msg_def;
-
-} dsv_msg_create_t;
-
-/*! The dsv_msg_set_t message is used to set the value of a dsv using its
- * name and a string representation of its value
- */
-typedef struct
-{
-    /*! Common party of the message */
-    dsv_comm_msg_def;
-
-    /*! The pid of the process requesting to set the dsv */
-    pid_t pid;
-
-    /*! dsv name */
-    char name[DSV_STRING_SIZE_MAX];
-
-    /*! dsv value union */
-    dsv_value_t value;
-
-} dsv_msg_set_t;
-
-/*! The dsv_msg_get_t message is used to get the value of a dsv by name. */
-typedef struct
-{
-    /*! Common party of the message */
-    dsv_comm_msg_def;
-
-    /*! The length of the buffer available to store the retrieved value */
-    char name[DSV_STRING_SIZE_MAX];
-
-} dsv_msg_get_t;
-
-typedef union
-{
-    dsv_comm_msg_def;
-    dsv_msg_create_t create;
-    dsv_msg_set_t set;
-    dsv_msg_get_t get;
-}dsv_msg_t;
-
-/*! The dsv_reply_msg_t message is used to reply message from server. */
-#define dsv_comm_reply_def struct {\
-    ssize_t length; \
-    int type; \
-    int result; }
-
-typedef dsv_comm_reply_def dsv_comm_reply_t;
-
-/*! The dsv_msg_reply_t message is use to reply the request from the client */
-typedef struct
-{
-    /*! Common party of the message */
-    dsv_comm_reply_def;
-
-    /*! dsv value data */
-    char vstr[DSV_STRING_SIZE_MAX];
-
-} dsv_reply_get_t;
-
-typedef union
-{
-    dsv_comm_reply_def;
-    dsv_reply_get_t get;
-}dsv_reply_t;
-
-#endif
 #endif // DSV_MSG_H

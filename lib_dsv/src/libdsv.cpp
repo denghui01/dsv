@@ -301,7 +301,9 @@ static int dsv_ParseJsonStr( void *ctx, uint32_t instID, const char *buf )
         if( cJSON_IsString( m ) && m->valuestring != NULL )
         {
             //printf("name:%s\n",m->valuestring);
-            dsv.pName = strdup( m->valuestring );
+            dsv.pName = (char *)malloc( DSV_STRING_SIZE_MAX );
+            snprintf( dsv.pName, DSV_STRING_SIZE_MAX,
+                      "[%d]%s", instID, m->valuestring );
         }
 
         /* handle dsv description */
@@ -387,8 +389,6 @@ static int dsv_ParseJsonStr( void *ctx, uint32_t instID, const char *buf )
     +-----------------------+
     | length                |
     +-----------------------+
-    | instID                |
-    +-----------------------+
     | handle (dsv_info_t *) |
     +-----------------------+
 
@@ -414,7 +414,6 @@ static int fill_req_buf(char *req_buf, int type, const void *hndl)
     char *req_data = req->data;
 
     req->type = type;
-    req->instID = -1; // no use
     req->length = sizeof(dsv_msg_request_t);
 
     memcpy( req_data, &hndl, sizeof(hndl) );
@@ -632,7 +631,6 @@ int DSV_Create( void *ctx, uint32_t instID, dsv_info_t *pDsv )
     int len = 0;
 
     req->type = DSV_MSG_CREATE;
-    req->instID = instID;
     req->length = sizeof(dsv_msg_request_t);
 
     memcpy( req_data, pDsv, sizeof(dsv_info_t) );
@@ -676,14 +674,11 @@ int DSV_Create( void *ctx, uint32_t instID, dsv_info_t *pDsv )
 
 /*!=============================================================================
 
-    Query the dsv handle from dsv server database by dsv name and instID.
+    Query the dsv handle from dsv server database by dsv name
 
 @param[in]
     ctx
         dsv ctx ( returned by DSV_Open() )
-@param[in]
-    instID
-        dsv instance ID passed by the creator, normally device instance ID
 @param[in]
     name
         pointer to a NULL terminated dsv namne string
@@ -692,7 +687,7 @@ int DSV_Create( void *ctx, uint32_t instID, dsv_info_t *pDsv )
     NULL if not found.
 
 ==============================================================================*/
-void* DSV_Handle( void *ctx, uint32_t instID, const char *name )
+void* DSV_Handle( void *ctx, const char *name )
 {
     assert( ctx );
     assert( name );
@@ -709,7 +704,6 @@ void* DSV_Handle( void *ctx, uint32_t instID, const char *name )
     char *rep_data = rep->data;
 
     req->type = DSV_MSG_GET_HANDLE;
-    req->instID = instID;
     req->length = sizeof(dsv_msg_request_t);
 
     strncpy( req_data, name, DSV_STRING_SIZE_MAX );
@@ -822,9 +816,6 @@ size_t DSV_Len( void *ctx, void *hndl )
     ctx
         dsv ctx ( returned by DSV_Open() )
 @param[in]
-    instID
-        dsv instance ID passed by the creator, normally device instance ID
-@param[in]
     name
         dsv name string terminated by NULL byte
 @param[in]
@@ -835,14 +826,14 @@ size_t DSV_Len( void *ctx, void *hndl )
     any other value specifies an error code (see errno.h)
 
 ==============================================================================*/
-int DSV_SetByName( void *ctx, uint32_t instID, const char *name, char *value )
+int DSV_SetByName( void *ctx, const char *name, char *value )
 {
     assert( ctx );
     assert( name );
     assert( value );
 
     int rc = EINVAL;
-    void *hndl = DSV_Handle( ctx, instID, name );
+    void *hndl = DSV_Handle( ctx, name );
     if( hndl == NULL )
     {
         syslog( LOG_ERR, "Unable to find dsv: %s", name );
@@ -1052,19 +1043,12 @@ int DSV_Set( void *ctx, void *hndl, T value )
 @param[in]
     ctx
         dsv ctx ( returned by DSV_Open() )
-
-@param[in]
-    instID
-        dsv instance ID passed by the creator, normally device instance ID
-
 @param[in]
     name
         dsv name string terminated by NULL byte
-
 @param[out]
     value
         dsv value as string
-
 @param[in]
     size
         size of value buffer
@@ -1075,7 +1059,6 @@ int DSV_Set( void *ctx, void *hndl, T value )
 
 ==============================================================================*/
 int DSV_GetByName( void *ctx,
-                   uint32_t instID,
                    const char *name,
                    char *value,
                    size_t size )
@@ -1086,7 +1069,7 @@ int DSV_GetByName( void *ctx,
     assert( value );
 
     int rc = EINVAL;
-    void *hndl = DSV_Handle( ctx, instID, name );
+    void *hndl = DSV_Handle( ctx, name );
     if( hndl == NULL )
     {
         syslog( LOG_ERR, "Unable to find dsv: %s", name );
@@ -1153,7 +1136,6 @@ int DSV_GetByNameFuzzy( void *ctx,
     char *rep_data = rep->data;
 
     req->type = DSV_MSG_GET_NEXT;
-    req->instID = -1; // no use
     req->length = sizeof(dsv_msg_request_t);
 
     *(int *)req_data = last_index;
@@ -1353,20 +1335,17 @@ int DSV_Get( void *ctx, void *hndl, T *value )
 /**
  * return zero if successful. Otherwise it shall return -1
  */
-int DSV_SubByName( void *ctx, uint32_t instID, const char *name )
+int DSV_SubByName( void *ctx, const char *name )
 {
     assert( ctx );
     assert( name );
 
     int rc;
     dsv_context_t *dsv_ctx = (dsv_context_t *)ctx;
-    char full_name[DSV_STRING_SIZE_MAX];
-    snprintf( full_name, DSV_STRING_SIZE_MAX, "[%d]%s", instID, name );
-
     rc = zmq_setsockopt( dsv_ctx->sock_subscribe,
                          ZMQ_SUBSCRIBE,
-                         full_name,
-                         strlen( full_name ) + 1 );
+                         name,
+                         strlen( name ) + 1 );
     return rc;
 }
 

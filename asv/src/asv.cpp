@@ -105,31 +105,19 @@ static void usage( void )
 int ProcessAddItem( int argc, char **argv )
 {
     int rc = EINVAL;
-    int num = 0;
-    uint32_t instID;
     char dsv_name[DSV_STRING_SIZE_MAX];
     if( optind == argc - 1 )
     {
         /* the last parameters should be dsv name */
-        num = sscanf( argv[optind], "[%d]%s", &instID, dsv_name );
-        if( num == 2 )
+        strncpy( dsv_name, argv[optind], DSV_STRING_SIZE_MAX );
+        void *hndl = DSV_Handle( g_state.dsv_ctx, dsv_name );
+        if( hndl == NULL )
         {
-            void *hndl = DSV_Handle( g_state.dsv_ctx,
-                                     instID,
-                                     dsv_name );
-            if( hndl == NULL )
-            {
-                syslog( LOG_ERR, "Unable to find dsv: %s", dsv_name );
-                return rc;
-            }
+            syslog( LOG_ERR, "Unable to find dsv: %s", dsv_name );
+            return rc;
+        }
 
-            rc = DSV_AddItemToArray( g_state.dsv_ctx, hndl, g_state.dsv_val );
-        }
-        else
-        {
-            fprintf( stderr, "Dsv name should include instance ID\n" );
-            rc = EINVAL;
-        }
+        rc = DSV_AddItemToArray( g_state.dsv_ctx, hndl, g_state.dsv_val );
     }
     else
     {
@@ -160,32 +148,22 @@ int ProcessAddItem( int argc, char **argv )
 static int ProcessInsItem( int argc, char **argv )
 {
     int rc = EINVAL;
-    int num = 0;
-    uint32_t instID;
     char dsv_name[DSV_STRING_SIZE_MAX];
     if( optind == argc - 1 )
     {
         /* the last parameters should be dsv name */
-        num = sscanf( argv[optind], "[%d]%s", &instID, dsv_name );
-        if( num == 2 )
+        strncpy( dsv_name, argv[optind], DSV_STRING_SIZE_MAX );
+        void *hndl = DSV_Handle( g_state.dsv_ctx, dsv_name );
+        if( hndl == NULL )
         {
-            void *hndl = DSV_Handle( g_state.dsv_ctx, instID, dsv_name );
-            if( hndl == NULL )
-            {
-                syslog( LOG_ERR, "Unable to find dsv: %s", dsv_name );
-                return rc;
-            }
+            syslog( LOG_ERR, "Unable to find dsv: %s", dsv_name );
+            return rc;
+        }
 
-            rc = DSV_InsItemToArray( g_state.dsv_ctx,
-                                     hndl,
-                                     g_state.index,
-                                     g_state.dsv_val );
-        }
-        else
-        {
-            fprintf( stderr, "Dsv name should include instance ID\n" );
-            rc = EINVAL;
-        }
+        rc = DSV_InsItemToArray( g_state.dsv_ctx,
+                                 hndl,
+                                 g_state.index,
+                                 g_state.dsv_val );
     }
     else
     {
@@ -216,29 +194,19 @@ static int ProcessInsItem( int argc, char **argv )
 int ProcessDelItem( int argc, char **argv )
 {
     int rc = EINVAL;
-    int num = 0;
-    uint32_t instID;
     char dsv_name[DSV_STRING_SIZE_MAX];
     if( optind == argc - 1 )
     {
         /* the last parameters should be dsv name */
-        num = sscanf( argv[optind], "[%d]%s", &instID, dsv_name );
-        if( num == 2 )
+        strncpy( dsv_name, argv[optind], DSV_STRING_SIZE_MAX );
+        void *hndl = DSV_Handle( g_state.dsv_ctx, dsv_name );
+        if( hndl == NULL )
         {
-            void *hndl = DSV_Handle( g_state.dsv_ctx, instID, dsv_name );
-            if( hndl == NULL )
-            {
-                syslog( LOG_ERR, "Unable to find dsv: %s", dsv_name );
-                return rc;
-            }
+            syslog( LOG_ERR, "Unable to find dsv: %s", dsv_name );
+            return rc;
+        }
 
-            rc = DSV_DelItemFromArray( g_state.dsv_ctx, hndl, g_state.index );
-        }
-        else
-        {
-            fprintf( stderr, "Dsv name should include instance ID\n" );
-            rc = EINVAL;
-        }
+        rc = DSV_DelItemFromArray( g_state.dsv_ctx, hndl, g_state.index );
     }
     else
     {
@@ -270,32 +238,23 @@ int ProcessDelItem( int argc, char **argv )
 int ProcessSetItem( int argc, char **argv )
 {
     int rc = EINVAL;
-    int num = 0;
-    uint32_t instID;
     char dsv_name[DSV_STRING_SIZE_MAX];
     if( optind == argc - 1 )
     {
         /* the last parameters should be dsv name */
-        num = sscanf( argv[optind], "[%d]%s", &instID, dsv_name );
-        if( num == 2 )
-        {
-            void *hndl = DSV_Handle( g_state.dsv_ctx, instID, dsv_name );
-            if( hndl == NULL )
-            {
-                syslog( LOG_ERR, "Unable to find dsv: %s", dsv_name );
-                return rc;
-            }
+        strncpy( dsv_name, argv[optind], DSV_STRING_SIZE_MAX );
+        void *hndl = DSV_Handle( g_state.dsv_ctx, dsv_name );
 
-            rc = DSV_SetItemInArray( g_state.dsv_ctx,
-                                     hndl,
-                                     g_state.index,
-                                     g_state.dsv_val );
-        }
-        else
+        if( hndl == NULL )
         {
-            fprintf( stderr, "Dsv name should include instance ID\n" );
-            rc = EINVAL;
+            syslog( LOG_ERR, "Unable to find dsv: %s", dsv_name );
+            return rc;
         }
+
+        rc = DSV_SetItemInArray( g_state.dsv_ctx,
+                                 hndl,
+                                 g_state.index,
+                                 g_state.dsv_val );
     }
     else
     {
@@ -326,30 +285,27 @@ int ProcessSetItem( int argc, char **argv )
 int ProcessGetItem( int argc, char **argv )
 {
     int rc = EINVAL;
-    int num = 0;
-    uint32_t instID;
     int value;
     char dsv_name[DSV_STRING_SIZE_MAX];
     if( optind == argc - 1 )
     {
         /* the last parameters should be dsv name */
-        num = sscanf( argv[optind], "[%d]%s", &instID, dsv_name );
-        if( num == 2 )
+        strncpy( dsv_name, argv[optind], DSV_STRING_SIZE_MAX );
+        void *hndl = DSV_Handle( g_state.dsv_ctx, dsv_name );
+        if( hndl == NULL )
         {
-            void *hndl = DSV_Handle( g_state.dsv_ctx, instID, dsv_name );
-            if( hndl == NULL )
-            {
-                syslog( LOG_ERR, "Unable to find dsv: %s", dsv_name );
-                return rc;
-            }
+            syslog( LOG_ERR, "Unable to find dsv: %s", dsv_name );
+            return rc;
+        }
 
-            rc = DSV_GetItemFromArray( g_state.dsv_ctx, hndl, g_state.index, &value );
-            printf("[%d]%s[%d]=%d\n", instID, dsv_name, g_state.index, value );
+        rc = DSV_GetItemFromArray( g_state.dsv_ctx, hndl, g_state.index, &value );
+        if( rc == 0 )
+        {
+            printf( "%s[%d]=%d\n", dsv_name, g_state.index, value );
         }
         else
         {
-            fprintf( stderr, "Dsv name should include instance ID\n" );
-            rc = EINVAL;
+            printf( "%s[%d]: wrong result\n", dsv_name, g_state.index );
         }
     }
     else

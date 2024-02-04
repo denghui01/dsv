@@ -114,27 +114,14 @@ static int ProcessSub( int argc, char **argv )
     for(; optind < argc; ++optind )
     {
         /* the rest of parameters should be multiple names */
-        rc = sscanf( argv[optind], "[%d]%s", &g_state.instID, g_state.dsv_name );
-        if( rc != 2 )
-        {
-            fprintf( stderr, "Dsv name should include instance ID\n" );
-            rc = EINVAL;
-        }
-        else
-        {
-            rc = 0;
-            rc += DSV_SubByName( g_state.dsv_ctx,
-                                 g_state.instID,
-                                 g_state.dsv_name );
-        }
+        strncpy( g_state.dsv_name, argv[optind], DSV_STRING_SIZE_MAX );
+        rc = DSV_SubByName( g_state.dsv_ctx, g_state.dsv_name );
     }
 
     if( rc == 0 )
     {
         while( 1 )
         {
-            uint32_t instID;
-            char name[DSV_STRING_SIZE_MAX];
             char full_name[DSV_STRING_SIZE_MAX];
             char value[DSV_STRING_SIZE_MAX];
             rc = DSV_GetNotification( g_state.dsv_ctx,
@@ -144,9 +131,8 @@ static int ProcessSub( int argc, char **argv )
                                       DSV_STRING_SIZE_MAX );
             if( rc == 0 )
             {
-                sscanf( full_name, "[%d]%s", &instID, name );
                 dsv_info_t dsv;
-                void *hndl = DSV_Handle( g_state.dsv_ctx, instID, name );
+                void *hndl = DSV_Handle( g_state.dsv_ctx, full_name );
                 assert(hndl);
                 dsv.type = DSV_Type( g_state.dsv_ctx, hndl);
                 if( dsv.type == DSV_TYPE_STR )
@@ -258,20 +244,9 @@ static int ProcessSet( int argc, char **argv )
     if( optind == argc - 2 )
     {
         /* the last two parameters should be dsv name and new value */
-        rc = sscanf( argv[optind++], "[%d]%s", &g_state.instID, g_state.dsv_name );
-        if( rc == 2 )
-        {
-            strcpy( g_state.dsv_val, argv[optind] );
-            rc = DSV_SetByName( g_state.dsv_ctx,
-                                g_state.instID,
-                                g_state.dsv_name,
-                                g_state.dsv_val );
-        }
-        else
-        {
-            fprintf( stderr, "Dsv name should include instance ID\n" );
-            rc = EINVAL;
-        }
+        strncpy( g_state.dsv_name, argv[optind], DSV_STRING_SIZE_MAX );
+        strncpy( g_state.dsv_val, argv[optind], DSV_STRING_SIZE_MAX );
+        rc = DSV_SetByName( g_state.dsv_ctx, g_state.dsv_name, g_state.dsv_val );
     }
     else
     {
@@ -306,7 +281,12 @@ static int ProcessCreate( int argc, char **argv )
         if( optind == argc - 1 )
         {
             /* the last parameter should be dsv name */
-            g_state.dsv.pName = strdup( argv[optind] );
+            g_state.dsv.pName = (char *)malloc( DSV_STRING_SIZE_MAX );
+            snprintf( g_state.dsv.pName,
+                      DSV_STRING_SIZE_MAX,
+                      "[%d]%s",
+                      g_state.instID,
+                      argv[optind] );
             rc = DSV_Create( g_state.dsv_ctx,
                              g_state.instID,
                              &g_state.dsv );

@@ -53,14 +53,6 @@ using dsv_array_t = std::vector<int>;
 
     This function fills the forward buffer with the information in
     dsv_info_t structure.
-    The forward buffer is a data structure:
-    +---------------------------+
-    | length                    |
-    +---------------------------+
-    | full_name                 |
-    +---------------------------+
-    | value (string or numeric) |
-    +---------------------------+
 
 @param[in]
     dest
@@ -93,16 +85,6 @@ void fill_fwd_buf( const char *full_name, dsv_info_t *dsv, char *fwd_buf )
 /**
  * hash map has full dsv name as key, and dsv_info_t as value
  * the memory should never be released as the dsv server never terminates
- * message buffer data structure:
- * +===============================+
- * |      dsv_create_buffer        |
- * +===============================+
- * | request(type, length, instID) |
- * +-------------------------------+
- * | dsv_info_t                    |
- * +-------------------------------+
- * | data: name, desc, tags, value |
- * +-------------------------------+
  */
 int var_create( const char *req_buf, char *fwd_buf )
 {
@@ -145,9 +127,7 @@ int var_create( const char *req_buf, char *fwd_buf )
                                  (int *)(req_data + dsv->len) ) );
         }
 
-        std::stringstream ss;
-        ss << "[" << req->instID << "]" << dsv->pName;
-        std::string full_name = ss.str();
+        std::string full_name(dsv->pName);
         auto e = g_map.find( full_name );
         if( e == g_map.end() )
         {
@@ -181,14 +161,6 @@ int var_create( const char *req_buf, char *fwd_buf )
 }
 
 /**
- * message buffer data structure:
- * +==============================+
- * |         dsv_msg_set          |
- * +==============================+
- * | common(type, length, instID) |
- * +------------------------------+
- * | data:hndl, value, client     |
- * +------------------------------+
  */
 int var_set( const char *req_buf, char *fwd_buf )
 {
@@ -198,7 +170,6 @@ int var_set( const char *req_buf, char *fwd_buf )
 
     int rc = EINVAL;
     struct timespec now = { 0 };
-    char full_name[DSV_STRING_SIZE_MAX];
     dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
     char *req_data = req->data;
 
@@ -206,7 +177,6 @@ int var_set( const char *req_buf, char *fwd_buf )
     req_data += sizeof(dsv);
     if( dsv != NULL )
     {
-        snprintf( full_name, DSV_STRING_SIZE_MAX, "[%d]%s", dsv->instID, dsv->pName );
         clock_gettime( CLOCK_REALTIME, &now );
         dsv->timestamp = now;
         if( dsv->type == DSV_TYPE_STR )
@@ -226,7 +196,7 @@ int var_set( const char *req_buf, char *fwd_buf )
             memcpy( &dsv->value, req_data, sizeof(dsv_value_t) );
         }
 
-        fill_fwd_buf( full_name, dsv, fwd_buf );
+        fill_fwd_buf( dsv->pName, dsv, fwd_buf );
         rc = 0;
     }
     return rc;
@@ -241,7 +211,6 @@ int var_add_item( const char *req_buf, char *fwd_buf )
 
     int rc = EINVAL;
     struct timespec now = { 0 };
-    char full_name[DSV_STRING_SIZE_MAX];
     dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
     char *req_data = req->data;
 
@@ -250,7 +219,6 @@ int var_add_item( const char *req_buf, char *fwd_buf )
     int value = *(int *)req_data;
     if( dsv != NULL && dsv->type == DSV_TYPE_INT_ARRAY )
     {
-        snprintf( full_name, DSV_STRING_SIZE_MAX, "[%d]%s", dsv->instID, dsv->pName );
         clock_gettime( CLOCK_REALTIME, &now );
         dsv->timestamp = now;
 
@@ -258,7 +226,7 @@ int var_add_item( const char *req_buf, char *fwd_buf )
         ai->push_back(value);
         dsv->len = ai->size() * sizeof(int);
 
-        fill_fwd_buf( full_name, dsv, fwd_buf );
+        fill_fwd_buf( dsv->pName, dsv, fwd_buf );
         rc = 0;
     }
     return rc;
@@ -272,7 +240,6 @@ int var_set_item( const char *req_buf, char *fwd_buf )
 
     int rc = EINVAL;
     struct timespec now = { 0 };
-    char full_name[DSV_STRING_SIZE_MAX];
     dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
     char *req_data = req->data;
 
@@ -283,14 +250,13 @@ int var_set_item( const char *req_buf, char *fwd_buf )
     int value = *(int *)req_data;
     if( dsv != NULL && dsv->type == DSV_TYPE_INT_ARRAY )
     {
-        snprintf( full_name, DSV_STRING_SIZE_MAX, "[%d]%s", dsv->instID, dsv->pName );
         clock_gettime( CLOCK_REALTIME, &now );
         dsv->timestamp = now;
 
         dsv_array_t *ai =  (dsv_array_t *)dsv->value.pArray;
         (*ai)[index] = value;
 
-        fill_fwd_buf( full_name, dsv, fwd_buf );
+        fill_fwd_buf( dsv->pName, dsv, fwd_buf );
         rc = 0;
     }
     return rc;
@@ -304,7 +270,6 @@ int var_ins_item( const char *req_buf, char *fwd_buf )
 
     int rc = EINVAL;
     struct timespec now = { 0 };
-    char full_name[DSV_STRING_SIZE_MAX];
     dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
     char *req_data = req->data;
 
@@ -315,7 +280,6 @@ int var_ins_item( const char *req_buf, char *fwd_buf )
     int value = *(int *)req_data;
     if( dsv != NULL && dsv->type == DSV_TYPE_INT_ARRAY )
     {
-        snprintf( full_name, DSV_STRING_SIZE_MAX, "[%d]%s", dsv->instID, dsv->pName );
         clock_gettime( CLOCK_REALTIME, &now );
         dsv->timestamp = now;
 
@@ -324,7 +288,7 @@ int var_ins_item( const char *req_buf, char *fwd_buf )
         ai->insert(std::next(it, index), value);
         dsv->len = ai->size() * sizeof(int);
 
-        fill_fwd_buf( full_name, dsv, fwd_buf );
+        fill_fwd_buf( dsv->pName, dsv, fwd_buf );
         rc = 0;
     }
     return rc;
@@ -338,7 +302,6 @@ int var_del_item( const char *req_buf, char *fwd_buf )
 
     int rc = EINVAL;
     struct timespec now = { 0 };
-    char full_name[DSV_STRING_SIZE_MAX];
     dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
     char *req_data = req->data;
 
@@ -347,7 +310,6 @@ int var_del_item( const char *req_buf, char *fwd_buf )
     int index = *(int *)req_data;
     if( dsv != NULL && dsv->type == DSV_TYPE_INT_ARRAY )
     {
-        snprintf( full_name, DSV_STRING_SIZE_MAX, "[%d]%s", dsv->instID, dsv->pName );
         clock_gettime( CLOCK_REALTIME, &now );
         dsv->timestamp = now;
 
@@ -356,7 +318,7 @@ int var_del_item( const char *req_buf, char *fwd_buf )
         ai->erase(std::next(it, index));
         dsv->len = ai->size() * sizeof(int);
 
-        fill_fwd_buf( full_name, dsv, fwd_buf );
+        fill_fwd_buf( dsv->pName, dsv, fwd_buf );
         rc = 0;
     }
     return rc;
@@ -381,22 +343,18 @@ int var_get_item( const char *req_buf, char *rep_buf )
     if( dsv != NULL && dsv->type == DSV_TYPE_INT_ARRAY )
     {
         dsv_array_t *ai = (dsv_array_t *)dsv->value.pArray;
-        *(int *)rep_data = (*ai)[index];
-        rep->length += sizeof(int);
-        rc = 0;
+        if( index < ai->size() )
+        {
+            *(int *)rep_data = (*ai)[index];
+            rep->length += sizeof(int);
+            rc = 0;
+        }
     }
     return rc;
 }
 
 /**
  *
- * +==============================+
- * |    dsv_msg_get_handle        |
- * +==============================+
- * | common(type, length, instID) |
- * +------------------------------+
- * | data: name                   |
- *   +------------------------------+
  */
 int var_get_handle( const char *req_buf, char *rep_buf )
 {
@@ -412,9 +370,7 @@ int var_get_handle( const char *req_buf, char *rep_buf )
     char *rep_data = rep->data;
     rep->length = sizeof(dsv_msg_reply_t);
 
-    std::stringstream ss;
-    ss << "[" << req->instID << "]" << req_data;
-    std::string full_name = ss.str();
+    std::string full_name(req_data);
     auto e = g_map.find( full_name );
     if( e != g_map.end() )
     {
@@ -427,13 +383,6 @@ int var_get_handle( const char *req_buf, char *rep_buf )
 
 /**
  *
- * +==============================+
- * |    dsv_msg_get_handle        |
- * +==============================+
- * | common(type, length, instID) |
- * +------------------------------+
- * | data: name                   |
- *   +------------------------------+
  */
 int var_get_type( const char *req_buf, char *rep_buf )
 {
@@ -461,13 +410,6 @@ int var_get_type( const char *req_buf, char *rep_buf )
 
 /**
  *
- * +==============================+
- * |    dsv_msg_get_handle        |
- * +==============================+
- * | common(type, length, instID) |
- * +------------------------------+
- * | data: name                   |
- *   +------------------------------+
  */
 int var_get_len( const char *req_buf, char *rep_buf )
 {

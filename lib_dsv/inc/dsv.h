@@ -168,7 +168,7 @@ int DSV_Create( void *ctx, uint32_t instID, dsv_info_t *pDsv );
 int DSV_CreateWithJson( void *ctx, uint32_t instID, const char *file );
 
 /* query the handle of dsv */
-void *DSV_Handle( void *ctx, uint32_t instID, const char *name );
+void *DSV_Handle( void *ctx, const char *name );
 
 /* query the type of dsv */
 int DSV_Type( void *ctx, void *hndl );
@@ -211,9 +211,9 @@ int DSV_GetItemFromArray( void *ctx, void *hndl, int index, int *value );
 
 /* helper functions */
 /* TODO: provide helper funtions to support set by name, but with real value */
-int DSV_SetByName( void *ctx, uint32_t instID, const char *name, char *value );
-int DSV_GetByName( void *ctx, uint32_t instID, const char *name, char *value, size_t size );
-int DSV_SubByName( void *ctx, uint32_t instID, const char *name );
+int DSV_SetByName( void *ctx, const char *name, char *value );
+int DSV_GetByName( void *ctx, const char *name, char *value, size_t size );
+int DSV_SubByName( void *ctx, const char *name );
 int DSV_GetByNameFuzzy( void *ctx,
                         const char *search_name,
                         int last_index,
