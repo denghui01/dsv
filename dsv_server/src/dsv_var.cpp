@@ -140,7 +140,6 @@ int var_create( const char *req_buf, char *fwd_buf )
         }
         else if( dsv->type == DSV_TYPE_INT_ARRAY )
         {
-//          dsv->value.pArray = memdup( req_data, dsv->len );
             dsv->value.pArray = static_cast<void *>(
                 new dsv_array_t( (int *)req_data,
                                  (int *)(req_data + dsv->len) ) );
@@ -204,7 +203,7 @@ int var_set( const char *req_buf, char *fwd_buf )
     char *req_data = req->data;
 
     dsv_info_t *dsv = *(dsv_info_t **)req_data;
-    req_data += sizeof(dsv_info_t *);
+    req_data += sizeof(dsv);
     if( dsv != NULL )
     {
         snprintf( full_name, DSV_STRING_SIZE_MAX, "[%d]%s", dsv->instID, dsv->pName );
@@ -217,8 +216,6 @@ int var_set( const char *req_buf, char *fwd_buf )
         }
         else if( dsv->type == DSV_TYPE_INT_ARRAY )
         {
-//          free( dsv->value.pArray );
-//          dsv->value.pArray = memdup( req_data, dsv->len );
             delete (dsv_array_t *)dsv->value.pArray;
             dsv->value.pArray = static_cast<void *>
                 (new dsv_array_t( (int *)req_data,
@@ -230,6 +227,162 @@ int var_set( const char *req_buf, char *fwd_buf )
         }
 
         fill_fwd_buf( full_name, dsv, fwd_buf );
+        rc = 0;
+    }
+    return rc;
+}
+
+
+int var_add_item( const char *req_buf, char *fwd_buf )
+{
+    assert( req_buf );
+    assert( fwd_buf );
+    printf( "Enter %s\n", __func__ );
+
+    int rc = EINVAL;
+    struct timespec now = { 0 };
+    char full_name[DSV_STRING_SIZE_MAX];
+    dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
+    char *req_data = req->data;
+
+    dsv_info_t *dsv = *(dsv_info_t **)req_data;
+    req_data += sizeof(dsv);
+    int value = *(int *)req_data;
+    if( dsv != NULL && dsv->type == DSV_TYPE_INT_ARRAY )
+    {
+        snprintf( full_name, DSV_STRING_SIZE_MAX, "[%d]%s", dsv->instID, dsv->pName );
+        clock_gettime( CLOCK_REALTIME, &now );
+        dsv->timestamp = now;
+
+        dsv_array_t *ai =  (dsv_array_t *)dsv->value.pArray;
+        ai->push_back(value);
+        dsv->len = ai->size() * sizeof(int);
+
+        fill_fwd_buf( full_name, dsv, fwd_buf );
+        rc = 0;
+    }
+    return rc;
+}
+
+int var_set_item( const char *req_buf, char *fwd_buf )
+{
+    assert( req_buf );
+    assert( fwd_buf );
+    printf( "Enter %s\n", __func__ );
+
+    int rc = EINVAL;
+    struct timespec now = { 0 };
+    char full_name[DSV_STRING_SIZE_MAX];
+    dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
+    char *req_data = req->data;
+
+    dsv_info_t *dsv = *(dsv_info_t **)req_data;
+    req_data += sizeof(dsv);
+    int index = *(int *)req_data;
+    req_data += sizeof(index);
+    int value = *(int *)req_data;
+    if( dsv != NULL && dsv->type == DSV_TYPE_INT_ARRAY )
+    {
+        snprintf( full_name, DSV_STRING_SIZE_MAX, "[%d]%s", dsv->instID, dsv->pName );
+        clock_gettime( CLOCK_REALTIME, &now );
+        dsv->timestamp = now;
+
+        dsv_array_t *ai =  (dsv_array_t *)dsv->value.pArray;
+        (*ai)[index] = value;
+
+        fill_fwd_buf( full_name, dsv, fwd_buf );
+        rc = 0;
+    }
+    return rc;
+}
+
+int var_ins_item( const char *req_buf, char *fwd_buf )
+{
+    assert( req_buf );
+    assert( fwd_buf );
+    printf( "Enter %s\n", __func__ );
+
+    int rc = EINVAL;
+    struct timespec now = { 0 };
+    char full_name[DSV_STRING_SIZE_MAX];
+    dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
+    char *req_data = req->data;
+
+    dsv_info_t *dsv = *(dsv_info_t **)req_data;
+    req_data += sizeof(dsv);
+    int index = *(int *)req_data;
+    req_data += sizeof(index);
+    int value = *(int *)req_data;
+    if( dsv != NULL && dsv->type == DSV_TYPE_INT_ARRAY )
+    {
+        snprintf( full_name, DSV_STRING_SIZE_MAX, "[%d]%s", dsv->instID, dsv->pName );
+        clock_gettime( CLOCK_REALTIME, &now );
+        dsv->timestamp = now;
+
+        dsv_array_t *ai =  (dsv_array_t *)dsv->value.pArray;
+        auto it = ai->begin();
+        ai->insert(std::next(it, index), value);
+        dsv->len = ai->size() * sizeof(int);
+
+        fill_fwd_buf( full_name, dsv, fwd_buf );
+        rc = 0;
+    }
+    return rc;
+}
+
+int var_del_item( const char *req_buf, char *fwd_buf )
+{
+    assert( req_buf );
+    assert( fwd_buf );
+    printf( "Enter %s\n", __func__ );
+
+    int rc = EINVAL;
+    struct timespec now = { 0 };
+    char full_name[DSV_STRING_SIZE_MAX];
+    dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
+    char *req_data = req->data;
+
+    dsv_info_t *dsv = *(dsv_info_t **)req_data;
+    req_data += sizeof(dsv);
+    int index = *(int *)req_data;
+    if( dsv != NULL && dsv->type == DSV_TYPE_INT_ARRAY )
+    {
+        snprintf( full_name, DSV_STRING_SIZE_MAX, "[%d]%s", dsv->instID, dsv->pName );
+        clock_gettime( CLOCK_REALTIME, &now );
+        dsv->timestamp = now;
+
+        dsv_array_t *ai = (dsv_array_t *)dsv->value.pArray;
+        auto it = ai->begin();
+        ai->erase(std::next(it, index));
+        dsv->len = ai->size() * sizeof(int);
+
+        fill_fwd_buf( full_name, dsv, fwd_buf );
+        rc = 0;
+    }
+    return rc;
+}
+
+int var_get_item( const char *req_buf, char *rep_buf )
+{
+    assert( req_buf );
+    assert( rep_buf );
+    printf( "Enter %s\n", __func__ );
+
+    int rc = EINVAL;
+    dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
+    char *req_data = req->data;
+
+    dsv_msg_reply_t *rep = (dsv_msg_reply_t *)rep_buf;
+    char *rep_data = rep->data;
+    rep->length = sizeof(dsv_msg_reply_t);
+
+    dsv_info_t *dsv = *(dsv_info_t **)req_data;
+    int index = *(int *)(req_data + sizeof(dsv_info_t *));
+    if( dsv != NULL && dsv->type == DSV_TYPE_INT_ARRAY )
+    {
+        dsv_array_t *ai = (dsv_array_t *)dsv->value.pArray;
+        *(int *)rep_data = (*ai)[index];
+        rep->length += sizeof(int);
         rc = 0;
     }
     return rc;
@@ -358,82 +511,6 @@ int var_get( const char *req_buf, char *rep_buf )
     if( pDsv != NULL )
     {
         rep->length += DSV_Memcpy( rep_data, pDsv );
-        rc = 0;
-    }
-    return rc;
-}
-
-int var_get_item( const char *req_buf, char *rep_buf )
-{
-    assert( req_buf );
-    assert( rep_buf );
-    printf( "Enter %s\n", __func__ );
-
-    int rc = EINVAL;
-    dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
-    char *req_data = req->data;
-
-    dsv_msg_reply_t *rep = (dsv_msg_reply_t *)rep_buf;
-    char *rep_data = rep->data;
-    rep->length = sizeof(dsv_msg_reply_t);
-
-    dsv_info_t *pDsv = *(dsv_info_t **)req_data;
-    int index = *(int *)(req_data + sizeof(dsv_info_t *));
-    if( pDsv != NULL && pDsv->type == DSV_TYPE_INT_ARRAY )
-    {
-//      int *ai = pDsv->value.pArray;
-//      *(int *)rep_data = ai[index];
-//      rep->length += sizeof(int);
-        rc = 0;
-    }
-    return rc;
-}
-
-int var_set_item( const char *req_buf, char *rep_buf )
-{
-    assert( req_buf );
-    assert( rep_buf );
-    printf( "Enter %s\n", __func__ );
-
-    int rc = EINVAL;
-    dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
-    char *req_data = req->data;
-
-    dsv_info_t *pDsv = *(dsv_info_t **)req_data;
-    req_data += sizeof(pDsv);
-    int index = *(int *)req_data;
-    req_data += sizeof(index);
-    int value = *(int *)req_data;
-
-    if( pDsv != NULL && pDsv->type == DSV_TYPE_INT_ARRAY )
-    {
-//      int *ai = pDsv->value.pArray;
-//      ai[index] = value;
-        rc = 0;
-    }
-    return rc;
-}
-
-int var_ins_item( const char *req_buf, char *rep_buf )
-{
-    assert( req_buf );
-    assert( rep_buf );
-    printf( "Enter %s\n", __func__ );
-
-    int rc = EINVAL;
-    dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
-    char *req_data = req->data;
-
-    dsv_info_t *pDsv = *(dsv_info_t **)req_data;
-    req_data += sizeof(pDsv);
-    int index = *(int *)req_data;
-    req_data += sizeof(index);
-    int value = *(int *)req_data;
-
-    if( pDsv != NULL && pDsv->type == DSV_TYPE_INT_ARRAY )
-    {
-        //std::vector<int> vi(pDsv->value.pArray);
-        //ai[index] = value;
         rc = 0;
     }
     return rc;

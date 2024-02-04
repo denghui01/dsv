@@ -204,6 +204,10 @@ int DSV_GetNotification( void *ctx, char *name, size_t nlen, char *value, size_t
 
 /* int array dsv operations */
 int DSV_InsItemToArray( void *ctx, void *hndl, int index, int value );
+int DSV_SetItemInArray( void *ctx, void *hndl, int index, int value );
+int DSV_DelItemFromArray( void *ctx, void *hndl, int index );
+int DSV_AddItemToArray( void *ctx, void *hndl, int value );
+int DSV_GetItemFromArray( void *ctx, void *hndl, int index, int *value );
 
 /* helper functions */
 /* TODO: provide helper funtions to support set by name, but with real value */

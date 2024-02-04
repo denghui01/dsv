@@ -243,6 +243,22 @@ static int dsv_handle_frontend()
         rc = var_set( req_buf, fwd_buf );
         break;
 
+    case DSV_MSG_ADD_ITEM:
+        rc = var_add_item( req_buf, fwd_buf );
+        break;
+
+    case DSV_MSG_INS_ITEM:
+        rc = var_ins_item( req_buf, fwd_buf );
+        break;
+
+    case DSV_MSG_DEL_ITEM:
+        rc = var_del_item( req_buf, fwd_buf );
+        break;
+
+    case DSV_MSG_SET_ITEM:
+        rc = var_set_item( req_buf, fwd_buf );
+        break;
+
     default:
         syslog( LOG_ERR, "Unsupported request type!" );
         break;

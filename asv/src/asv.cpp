@@ -86,6 +86,61 @@ static void usage( void )
 
 /*!=============================================================================
 
+    Process asv add command, eg,
+    asv add -v 9908 [123]/SYS/TEST/INT_ARRAY
+
+@param[in]
+    argc
+        number of arguments passed to the process
+
+@param[in]
+    argv
+        array of null terminated argument strings passed to the process
+        The arguments are processed using getopt()
+
+@retval
+    0 - success
+    others - failed
+/*============================================================================*/
+int ProcessAddItem( int argc, char **argv )
+{
+    int rc = EINVAL;
+    int num = 0;
+    uint32_t instID;
+    char dsv_name[DSV_STRING_SIZE_MAX];
+    if( optind == argc - 1 )
+    {
+        /* the last parameters should be dsv name */
+        num = sscanf( argv[optind], "[%d]%s", &instID, dsv_name );
+        if( num == 2 )
+        {
+            void *hndl = DSV_Handle( g_state.dsv_ctx,
+                                     instID,
+                                     dsv_name );
+            if( hndl == NULL )
+            {
+                syslog( LOG_ERR, "Unable to find dsv: %s", dsv_name );
+                return rc;
+            }
+
+            rc = DSV_AddItemToArray( g_state.dsv_ctx, hndl, g_state.dsv_val );
+        }
+        else
+        {
+            fprintf( stderr, "Dsv name should include instance ID\n" );
+            rc = EINVAL;
+        }
+    }
+    else
+    {
+        fprintf( stderr, "Wrong parameters\n" );
+    }
+
+    return rc;
+}
+
+/*!=============================================================================
+
     Process asv ins command, eg,
     asv ins -i 3 -v 9907 [123]/SYS/TEST/INT_ARRAY
 
@@ -102,7 +157,7 @@ static void usage( void )
     0 - success
     others - failed
 /*============================================================================*/
-static int ProcessIns( int argc, char **argv )
+static int ProcessInsItem( int argc, char **argv )
 {
     int rc = EINVAL;
     int num = 0;
@@ -158,7 +213,7 @@ static int ProcessIns( int argc, char **argv )
     0 - success
     others - failed
 /*============================================================================*/
-int ProcessDel( int argc, char **argv )
+int ProcessDelItem( int argc, char **argv )
 {
     int rc = EINVAL;
     int num = 0;
@@ -177,60 +232,7 @@ int ProcessDel( int argc, char **argv )
                 return rc;
             }
 
-//          rc = DSV_DelItemInArray( g_state.dsv_ctx, hndl, g_state.index );
-        }
-        else
-        {
-            fprintf( stderr, "Dsv name should include instance ID\n" );
-            rc = EINVAL;
-        }
-    }
-    else
-    {
-        fprintf( stderr, "Wrong parameters\n" );
-    }
-
-    return rc;
-}
-
-/*!=============================================================================
-
-    Process asv get command, eg,
-    sav get -i 3 [123]/SYS/TEST/INT_ARRAY
-
-@param[in]
-    argc
-        number of arguments passed to the process
-
-@param[in]
-    argv
-        array of null terminated argument strings passed to the process
-        The arguments are processed using getopt()
-
-@retval
-    0 - success
-    others - failed
-/*============================================================================*/
-int ProcessGet( int argc, char **argv )
-{
-    int rc = EINVAL;
-    int num = 0;
-    uint32_t instID;
-    char dsv_name[DSV_STRING_SIZE_MAX];
-    if( optind == argc - 1 )
-    {
-        /* the last parameters should be dsv name */
-        num = sscanf( argv[optind], "[%d]%s", &instID, dsv_name );
-        if( num == 2 )
-        {
-            void *hndl = DSV_Handle( g_state.dsv_ctx, instID, dsv_name );
-            if( hndl == NULL )
-            {
-                syslog( LOG_ERR, "Unable to find dsv: %s", dsv_name );
-                return rc;
-            }
-
-//          rc = DSV_GetItemFromArray( g_state.dsv_ctx, hndl, g_state.index );
+            rc = DSV_DelItemFromArray( g_state.dsv_ctx, hndl, g_state.index );
         }
         else
         {
@@ -265,7 +267,7 @@ int ProcessGet( int argc, char **argv )
     0 - success
     others - failed
 /*============================================================================*/
-int ProcessSet( int argc, char **argv )
+int ProcessSetItem( int argc, char **argv )
 {
     int rc = EINVAL;
     int num = 0;
@@ -284,10 +286,10 @@ int ProcessSet( int argc, char **argv )
                 return rc;
             }
 
-//          rc = DSV_SetItemInArray( g_state.dsv_ctx,
-//                                   hndl,
-//                                   g_state.index,
-//                                   g_state.dsv_val );
+            rc = DSV_SetItemInArray( g_state.dsv_ctx,
+                                     hndl,
+                                     g_state.index,
+                                     g_state.dsv_val );
         }
         else
         {
@@ -305,8 +307,8 @@ int ProcessSet( int argc, char **argv )
 
 /*!=============================================================================
 
-    Process asv add command, eg,
-    asv add -v 9908 [123]/SYS/TEST/INT_ARRAY
+    Process asv get command, eg,
+    sav get -i 3 [123]/SYS/TEST/INT_ARRAY
 
 @param[in]
     argc
@@ -321,11 +323,12 @@ int ProcessSet( int argc, char **argv )
     0 - success
     others - failed
 /*============================================================================*/
-int ProcessAdd( int argc, char **argv )
+int ProcessGetItem( int argc, char **argv )
 {
     int rc = EINVAL;
     int num = 0;
     uint32_t instID;
+    int value;
     char dsv_name[DSV_STRING_SIZE_MAX];
     if( optind == argc - 1 )
     {
@@ -333,16 +336,15 @@ int ProcessAdd( int argc, char **argv )
         num = sscanf( argv[optind], "[%d]%s", &instID, dsv_name );
         if( num == 2 )
         {
-            void *hndl = DSV_Handle( g_state.dsv_ctx,
-                                     instID,
-                                     dsv_name );
+            void *hndl = DSV_Handle( g_state.dsv_ctx, instID, dsv_name );
             if( hndl == NULL )
             {
                 syslog( LOG_ERR, "Unable to find dsv: %s", dsv_name );
                 return rc;
             }
 
-            //rc = DSV_AddItemToArray( g_state.dsv_ctx, hndl, g_state.dsv_val );
+            rc = DSV_GetItemFromArray( g_state.dsv_ctx, hndl, g_state.index, &value );
+            printf("[%d]%s[%d]=%d\n", instID, dsv_name, g_state.index, value );
         }
         else
         {
@@ -357,6 +359,8 @@ int ProcessAdd( int argc, char **argv )
 
     return rc;
 }
+
+
 
 /*!=============================================================================
 
@@ -488,19 +492,19 @@ int main( int argc, char *argv[] )
     switch( g_state.operation )
     {
     case ASV_ADD:
-        rc = ProcessAdd( argc, argv );
+        rc = ProcessAddItem( argc, argv );
         break;
     case ASV_SET:
-        rc = ProcessSet( argc, argv );
+        rc = ProcessSetItem( argc, argv );
         break;
     case ASV_GET:
-        rc = ProcessGet( argc, argv );
+        rc = ProcessGetItem( argc, argv );
         break;
     case ASV_DEL:
-        rc = ProcessDel( argc, argv );
+        rc = ProcessDelItem( argc, argv );
         break;
     case ASV_INS:
-        rc = ProcessIns( argc, argv );
+        rc = ProcessInsItem( argc, argv );
         break;
     default:
         break;

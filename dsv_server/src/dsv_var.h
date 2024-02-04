@@ -37,4 +37,7 @@ int var_notify( char *sub_buf, char *fwd_buf );
 
 int var_get_item( const char *req_buf, char *rep_buf );
 int var_set_item( const char *req_buf, char *fwd_buf );
+int var_ins_item( const char *req_buf, char *fwd_buf );
+int var_add_item( const char *req_buf, char *fwd_buf );
+int var_del_item( const char *req_buf, char *fwd_buf );
 #endif // DSV_VAR_H

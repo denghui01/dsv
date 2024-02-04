@@ -1394,6 +1394,32 @@ int DSV_GetNotification( void *ctx,
     return rc;
 }
 
+int DSV_AddItemToArray( void *ctx, void *hndl, int value )
+{
+    assert(ctx);
+    assert(hndl);
+
+    int rc = EINVAL;
+    char req_buf[BUFSIZE];
+    dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
+    char *req_data = req->data;
+
+    rc = fill_req_buf(req_buf, DSV_MSG_ADD_ITEM, hndl);
+    req_data += rc;
+
+    *(int *)req_data = value;
+    req->length += sizeof(value);
+
+    rc = dsv_SendMsg( ctx, req_buf, req->length, NULL, 0 );
+    if( rc != 0 )
+    {
+        syslog( LOG_ERR, "Failed to send message to the server" );
+        return EFAULT;
+    }
+
+    return rc;
+}
+
 int DSV_InsItemToArray( void *ctx, void *hndl, int index, int value )
 {
     assert(ctx);
@@ -1406,6 +1432,11 @@ int DSV_InsItemToArray( void *ctx, void *hndl, int index, int value )
 
     rc = fill_req_buf(req_buf, DSV_MSG_INS_ITEM, hndl);
     req_data += rc;
+
+    *(int *)req_data = index;
+    req->length += sizeof(index);
+    req_data += sizeof(index);
+
     *(int *)req_data = value;
     req->length += sizeof(value);
 
@@ -1416,6 +1447,92 @@ int DSV_InsItemToArray( void *ctx, void *hndl, int index, int value )
         return EFAULT;
     }
 
+    return rc;
+}
+
+int DSV_DelItemFromArray( void *ctx, void *hndl, int index )
+{
+    assert(ctx);
+    assert(hndl);
+
+    int rc = EINVAL;
+    char req_buf[BUFSIZE];
+    dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
+    char *req_data = req->data;
+
+    rc = fill_req_buf(req_buf, DSV_MSG_DEL_ITEM, hndl);
+    req_data += rc;
+
+    *(int *)req_data = index;
+    req->length += sizeof(index);
+
+    rc = dsv_SendMsg( ctx, req_buf, req->length, NULL, 0 );
+    if( rc != 0 )
+    {
+        syslog( LOG_ERR, "Failed to send message to the server" );
+        return EFAULT;
+    }
+
+    return rc;
+}
+
+int DSV_SetItemInArray( void *ctx, void *hndl, int index, int value )
+{
+    assert(ctx);
+    assert(hndl);
+
+    int rc = EINVAL;
+    char req_buf[BUFSIZE];
+    dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
+    char *req_data = req->data;
+
+    rc = fill_req_buf(req_buf, DSV_MSG_SET_ITEM, hndl);
+    req_data += rc;
+
+    *(int *)req_data = index;
+    req->length += sizeof(index);
+    req_data += sizeof(index);
+
+    *(int *)req_data = value;
+    req->length += sizeof(value);
+
+    rc = dsv_SendMsg( ctx, req_buf, req->length, NULL, 0 );
+    if( rc != 0 )
+    {
+        syslog( LOG_ERR, "Failed to send message to the server" );
+        return EFAULT;
+    }
+
+    return rc;
+}
+
+int DSV_GetItemFromArray( void *ctx, void *hndl, int index, int *value )
+{
+    assert(ctx);
+    assert(hndl);
+
+    int rc = EINVAL;
+    char req_buf[BUFSIZE];
+    dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
+    char *req_data = req->data;
+
+    char rep_buf[BUFSIZE];
+    dsv_msg_reply_t *rep = (dsv_msg_reply_t *)rep_buf;
+    char *rep_data = rep->data;
+
+    rc = fill_req_buf(req_buf, DSV_MSG_GET_ITEM, hndl);
+    req_data += rc;
+
+    *(int *)req_data = index;
+    req->length += sizeof(index);
+
+    rc = dsv_SendMsg( ctx, req_buf, req->length, rep_buf, sizeof(rep_buf) );
+    if( rc != 0 )
+    {
+        syslog( LOG_ERR, "Failed to send message to the server" );
+        return EFAULT;
+    }
+    *value = *(int *)rep_data;
     return rc;
 }
 /* end of libsysvars group */
