@@ -30,14 +30,13 @@ SOFTWARE.
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
-#include <syslog.h>
 #include <assert.h>
 #include <inttypes.h>
 #include "zmq.h"
 #include "dsv.h"
 #include "dsv_msg.h"
 #include "cjson/cJSON.h"
-
+#include "dsv_log.h"
 
 /*==============================================================================
                                Macros
@@ -119,7 +118,7 @@ static int dsv_SendMsg( void *ctx,
         rc = zmq_send( dsv_ctx->sock_publish, req_buf, req_len, 0 );
         if( rc == -1 )
         {
-            syslog( LOG_ERR, "zmq_send failed: %s", strerror( errno ) );
+            dsvlog( LOG_ERR, "zmq_send failed: %s", strerror( errno ) );
             return EFAULT;
         }
         else
@@ -139,7 +138,7 @@ static int dsv_SendMsg( void *ctx,
             rc = zmq_send( dsv_ctx->sock_request, req_buf, req_len, 0 );
             if( rc == -1 )
             {
-                syslog( LOG_ERR, "zmq_send failed: %s", strerror( errno ) );
+                dsvlog( LOG_ERR, "zmq_send failed: %s", strerror( errno ) );
                 return EFAULT;
             }
             else
@@ -147,7 +146,7 @@ static int dsv_SendMsg( void *ctx,
                 rc = zmq_recv( dsv_ctx->sock_request, rep_buf, rep_len, 0 );
                 if( rc == -1 )
                 {
-                    syslog( LOG_ERR, "zmq_recv failed: %s", strerror( errno ) );
+                    dsvlog( LOG_ERR, "zmq_recv failed: %s", strerror( errno ) );
                     return EFAULT;
                 }
                 else
@@ -191,7 +190,7 @@ static int dsv_RecvMsg( void *ctx,
     rc = zmq_recv( dsv_ctx->sock_subscribe, sub_buf, sub_len, 0 );
     if( rc == -1 )
     {
-        syslog( LOG_ERR, "zmq_recv failed: %s", zmq_strerror( errno ) );
+        dsvlog( LOG_ERR, "zmq_recv failed: %s", zmq_strerror( errno ) );
         return EFAULT;
     }
     return 0;
@@ -239,20 +238,20 @@ static int dsv_ReadJsonFile( const char *file, char *buf, size_t size )
             read_size = fread( buf, 1, file_size, fp );
             if( read_size != file_size )
             {
-                syslog( LOG_ERR, "Failed to read json file: %s", file );
+                dsvlog( LOG_ERR, "Failed to read json file: %s", file );
                 rc = EINVAL;
             }
         }
         else
         {
-            syslog( LOG_ERR, "Json file exceeds maximum size: %s", file );
+            dsvlog( LOG_ERR, "Json file exceeds maximum size: %s", file );
             rc = EINVAL;
         }
         fclose( fp );
     }
     else
     {
-        syslog( LOG_ERR, "Failed to open json file: %s.", file );
+        dsvlog( LOG_ERR, "Failed to open json file: %s.", file );
         rc = EINVAL;
     }
 
@@ -341,7 +340,7 @@ static int dsv_ParseJsonStr( void *ctx, uint32_t instID, const char *buf )
         {
             if( DSV_Double2Value( m->valuedouble, &dsv ) != 0 )
             {
-                syslog( LOG_ERR,
+                dsvlog( LOG_ERR,
                         "The dsv type doesn't match the value: %s",
                         dsv.pName  );
                 continue;
@@ -352,7 +351,7 @@ static int dsv_ParseJsonStr( void *ctx, uint32_t instID, const char *buf )
         if( rc != 0 )
         {
             /* continue even fail one dsv */
-            syslog( LOG_ERR, "Failed to create dsv: %s", dsv.pName );
+            dsvlog( LOG_ERR, "Failed to create dsv: %s", dsv.pName );
         }
 
         if( dsv.pName )
@@ -441,7 +440,7 @@ void* DSV_Open( void )
 
     if( !DSV_DiscoverServer( server_ip, 64 ) )
     {
-        syslog( LOG_ERR, "Error: No DSV server found!" );
+        dsvlog( LOG_ERR, "Error: No DSV server found!" );
         return NULL;
     }
 
@@ -455,14 +454,14 @@ void* DSV_Open( void )
     ctx = (dsv_context_t *)calloc( sizeof(dsv_context_t), 1 );
     if( ctx == NULL )
     {
-        syslog( LOG_ERR, "Unable to alloc memory for dsv_context_t" );
+        dsvlog( LOG_ERR, "Unable to alloc memory for dsv_context_t" );
         goto error;
     }
 
     ctx->zmq_ctx = zmq_ctx_new();
     if( ctx == NULL )
     {
-        syslog( LOG_ERR, "Failed to call zmq_ctx_new: %s", strerror( errno ) );
+        dsvlog( LOG_ERR, "Failed to call zmq_ctx_new: %s", strerror( errno ) );
         goto error;
     }
 
@@ -470,13 +469,13 @@ void* DSV_Open( void )
     ctx->sock_request = zmq_socket( ctx->zmq_ctx, ZMQ_REQ );
     if( ctx->sock_request == NULL )
     {
-        syslog( LOG_ERR, "Failed to call zmq_socket: %s", strerror( errno ) );
+        dsvlog( LOG_ERR, "Failed to call zmq_socket: %s", strerror( errno ) );
         goto error;
     }
     rc = zmq_connect( ctx->sock_request, reply_url );
     if( rc != 0 )
     {
-        syslog( LOG_ERR, "Failed to call zmq_connect: %s", strerror( errno ) );
+        dsvlog( LOG_ERR, "Failed to call zmq_connect: %s", strerror( errno ) );
         goto error;
     }
 
@@ -484,13 +483,13 @@ void* DSV_Open( void )
     ctx->sock_publish = zmq_socket( ctx->zmq_ctx, ZMQ_PUB );
     if( ctx->sock_publish == NULL )
     {
-        syslog( LOG_ERR, "Failed to call zmq_socket: %s", strerror( errno ) );
+        dsvlog( LOG_ERR, "Failed to call zmq_socket: %s", strerror( errno ) );
         goto error;
     }
     rc = zmq_connect( ctx->sock_publish, frontend_url );
     if( rc != 0 )
     {
-        syslog( LOG_ERR, "Failed to call zmq_connect: %s", strerror( errno ) );
+        dsvlog( LOG_ERR, "Failed to call zmq_connect: %s", strerror( errno ) );
         goto error;
     }
     /*now just wait 100ms for publisher connected to endpoint */
@@ -500,13 +499,13 @@ void* DSV_Open( void )
     ctx->sock_subscribe = zmq_socket( ctx->zmq_ctx, ZMQ_SUB );
     if( ctx->sock_subscribe == NULL )
     {
-        syslog( LOG_ERR, "Failed to call zmq_socket: %s", strerror( errno ) );
+        dsvlog( LOG_ERR, "Failed to call zmq_socket: %s", strerror( errno ) );
         goto error;
     }
     rc = zmq_connect( ctx->sock_subscribe, backend_url );
     if( rc != 0 )
     {
-        syslog( LOG_ERR, "Failed to call zmq_connect: %s", strerror( errno ) );
+        dsvlog( LOG_ERR, "Failed to call zmq_connect: %s", strerror( errno ) );
         goto error;
     }
     return (void *)ctx;
@@ -586,7 +585,7 @@ int DSV_CreateWithJson( void *ctx, uint32_t instID, const char *file )
     char *json_buf = (char *)malloc( DSV_JSON_FILE_SIZE_MAX );
     if( json_buf == NULL )
     {
-        syslog( LOG_ERR, "Unable to allocate memory\n" );
+        dsvlog( LOG_ERR, "Unable to allocate memory\n" );
         return EINVAL;
     }
 
@@ -665,7 +664,7 @@ int DSV_Create( void *ctx, uint32_t instID, dsv_info_t *pDsv )
     rc = dsv_SendMsg( ctx, req_buf, req->length, NULL, 0 );
     if( rc != 0 )
     {
-        syslog( LOG_ERR, "Failed to send message to the server: %s", pDsv->pName );
+        dsvlog( LOG_ERR, "Failed to send message to the server: %s", pDsv->pName );
         return EFAULT;
     }
 
@@ -712,7 +711,7 @@ void* DSV_Handle( void *ctx, const char *name )
     rc = dsv_SendMsg( ctx, req_buf, req->length, rep_buf, sizeof(rep_buf) );
     if( rc != 0 )
     {
-        syslog( LOG_ERR, "Failed to send message to the server" );
+        dsvlog( LOG_ERR, "Failed to send message to the server: %s", name );
         return NULL;
     }
     handle = *(void **)rep_data;
@@ -755,7 +754,7 @@ int DSV_Type( void *ctx, void *hndl )
     rc = dsv_SendMsg( ctx, req_buf, req->length, rep_buf, sizeof(rep_buf) );
     if( rc != 0 )
     {
-        syslog( LOG_ERR, "Failed to send message to the server" );
+        dsvlog( LOG_ERR, "Failed to send message to the server" );
         return EFAULT;
     }
     type = *(int *)rep_data;
@@ -798,7 +797,7 @@ size_t DSV_Len( void *ctx, void *hndl )
     rc = dsv_SendMsg( ctx, req_buf, req->length, rep_buf, sizeof(rep_buf) );
     if( rc != 0 )
     {
-        syslog( LOG_ERR, "Failed to send message to the server" );
+        dsvlog( LOG_ERR, "Failed to send message to the server" );
         return EFAULT;
     }
     len = *(size_t *)rep_data;
@@ -836,7 +835,7 @@ int DSV_SetByName( void *ctx, const char *name, char *value )
     void *hndl = DSV_Handle( ctx, name );
     if( hndl == NULL )
     {
-        syslog( LOG_ERR, "Unable to find dsv: %s", name );
+        dsvlog( LOG_ERR, "Unable to find dsv: %s", name );
         return rc;
     }
 
@@ -875,7 +874,7 @@ int DSV_SetThruStr( void *ctx, void *hndl, const char *value )
     int type = DSV_Type( ctx, hndl );
     if( type < 0 )
     {
-        syslog( LOG_ERR, "Unable to get the dsv type" );
+        dsvlog( LOG_ERR, "Unable to get the dsv type" );
         return rc;
     }
 
@@ -936,7 +935,7 @@ int DSV_SetThruStr( void *ctx, void *hndl, const char *value )
         break;
 
     default:
-        syslog( LOG_ERR, "Unsupported type for dsv" );
+        dsvlog( LOG_ERR, "Unsupported type for dsv" );
         break;
     }
 
@@ -965,7 +964,7 @@ int DSV_Set( void *ctx, void *hndl, char *value )
     rc = dsv_SendMsg( ctx, req_buf, req->length, NULL, 0 );
     if( rc != 0 )
     {
-        syslog( LOG_ERR, "Failed to send message to the server" );
+        dsvlog( LOG_ERR, "Failed to send message to the server" );
         return EFAULT;
     }
 
@@ -994,7 +993,7 @@ int DSV_Set( void *ctx, void *hndl, void *data, size_t size )
     rc = dsv_SendMsg( ctx, req_buf, req->length, NULL, 0 );
     if( rc != 0 )
     {
-        syslog( LOG_ERR, "Failed to send message to the server" );
+        dsvlog( LOG_ERR, "Failed to send message to the server" );
         return EFAULT;
     }
 
@@ -1023,7 +1022,7 @@ int DSV_Set( void *ctx, void *hndl, T value )
     rc = dsv_SendMsg( ctx, req_buf, req->length, NULL, 0 );
     if( rc != 0 )
     {
-        syslog( LOG_ERR, "Failed to send message to the server" );
+        dsvlog( LOG_ERR, "Failed to send message to the server" );
         return EFAULT;
     }
 
@@ -1072,7 +1071,7 @@ int DSV_GetByName( void *ctx,
     void *hndl = DSV_Handle( ctx, name );
     if( hndl == NULL )
     {
-        syslog( LOG_ERR, "Unable to find dsv: %s", name );
+        dsvlog( LOG_ERR, "Unable to find dsv: %s", name );
         return rc;
     }
 
@@ -1148,7 +1147,10 @@ int DSV_GetByNameFuzzy( void *ctx,
     rc = dsv_SendMsg( ctx, req_buf, req->length, rep_buf, sizeof(rep_buf) );
     if( rc != 0 )
     {
-        syslog( LOG_ERR, "Failed to send message to the server" );
+        if( rc != ENOENT )
+        {
+            dsvlog( LOG_ERR, "Failed to send message to the server: %s", search_name );
+        }
         rc = -1;
     }
     else
@@ -1200,7 +1202,7 @@ int DSV_GetThruStr( void *ctx, void *hndl, char *value, size_t size )
     int type = DSV_Type( ctx, hndl );
     if( type < 0 )
     {
-        syslog( LOG_ERR, "Unable to get the dsv type" );
+        dsvlog( LOG_ERR, "Unable to get the dsv type" );
         return rc;
     }
 
@@ -1263,7 +1265,7 @@ int DSV_GetThruStr( void *ctx, void *hndl, char *value, size_t size )
         break;
 
     default:
-        syslog( LOG_ERR, "Unsupported type for dsv" );
+        dsvlog( LOG_ERR, "Unsupported type for dsv" );
         break;
     }
 
@@ -1293,7 +1295,7 @@ int DSV_Get( void *ctx, void *hndl, char *value, size_t size )
     rc = dsv_SendMsg( ctx, req_buf, req->length, rep_buf, sizeof(rep_buf) );
     if( rc != 0 )
     {
-        syslog( LOG_ERR, "Failed to send message to the server" );
+        dsvlog( LOG_ERR, "Failed to send message to the server" );
         return EFAULT;
     }
     strncpy( value, rep_data, size );
@@ -1324,7 +1326,7 @@ int DSV_Get( void *ctx, void *hndl, T *value )
     rc = dsv_SendMsg( ctx, req_buf, req->length, rep_buf, sizeof(rep_buf) );
     if( rc != 0 )
     {
-        syslog( LOG_ERR, "Failed to send message to the server" );
+        dsvlog( LOG_ERR, "Failed to send message to the server" );
         return EFAULT;
     }
     memcpy( value, rep_data, sizeof(dsv_value_t) );
@@ -1392,7 +1394,7 @@ int DSV_AddItemToArray( void *ctx, void *hndl, int value )
     rc = dsv_SendMsg( ctx, req_buf, req->length, NULL, 0 );
     if( rc != 0 )
     {
-        syslog( LOG_ERR, "Failed to send message to the server" );
+        dsvlog( LOG_ERR, "Failed to send message to the server" );
         return EFAULT;
     }
 
@@ -1422,7 +1424,7 @@ int DSV_InsItemToArray( void *ctx, void *hndl, int index, int value )
     rc = dsv_SendMsg( ctx, req_buf, req->length, NULL, 0 );
     if( rc != 0 )
     {
-        syslog( LOG_ERR, "Failed to send message to the server" );
+        dsvlog( LOG_ERR, "Failed to send message to the server" );
         return EFAULT;
     }
 
@@ -1448,7 +1450,7 @@ int DSV_DelItemFromArray( void *ctx, void *hndl, int index )
     rc = dsv_SendMsg( ctx, req_buf, req->length, NULL, 0 );
     if( rc != 0 )
     {
-        syslog( LOG_ERR, "Failed to send message to the server" );
+        dsvlog( LOG_ERR, "Failed to send message to the server" );
         return EFAULT;
     }
 
@@ -1478,7 +1480,7 @@ int DSV_SetItemInArray( void *ctx, void *hndl, int index, int value )
     rc = dsv_SendMsg( ctx, req_buf, req->length, NULL, 0 );
     if( rc != 0 )
     {
-        syslog( LOG_ERR, "Failed to send message to the server" );
+        dsvlog( LOG_ERR, "Failed to send message to the server" );
         return EFAULT;
     }
 
@@ -1508,7 +1510,7 @@ int DSV_GetItemFromArray( void *ctx, void *hndl, int index, int *value )
     rc = dsv_SendMsg( ctx, req_buf, req->length, rep_buf, sizeof(rep_buf) );
     if( rc != 0 )
     {
-        syslog( LOG_ERR, "Failed to send message to the server" );
+        dsvlog( LOG_ERR, "Failed to send message to the server" );
         return EFAULT;
     }
     *value = *(int *)rep_data;

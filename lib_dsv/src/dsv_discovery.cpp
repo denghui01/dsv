@@ -39,11 +39,9 @@ SOFTWARE.
 @param[out]
     server_ip
         buffer to output server ip as string. NULL will ignore output.
-
 @param[in]
     size
         size of buffer
-
 @return
     0 - No dsv server found,
     1 - found a dsv server running

@@ -32,11 +32,11 @@ SOFTWARE.
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
-#include <syslog.h>
 #include <assert.h>
 #include "zmq.h"
 #include "dsv.h"
 #include "dsv_msg.h"
+#include "dsv_log.h"
 
 typedef enum asv_operation
 {
@@ -113,7 +113,7 @@ int ProcessAddItem( int argc, char **argv )
         void *hndl = DSV_Handle( g_state.dsv_ctx, dsv_name );
         if( hndl == NULL )
         {
-            syslog( LOG_ERR, "Unable to find dsv: %s", dsv_name );
+            dsvlog( LOG_ERR, "Unable to find dsv: %s", dsv_name );
             return rc;
         }
 
@@ -156,7 +156,7 @@ static int ProcessInsItem( int argc, char **argv )
         void *hndl = DSV_Handle( g_state.dsv_ctx, dsv_name );
         if( hndl == NULL )
         {
-            syslog( LOG_ERR, "Unable to find dsv: %s", dsv_name );
+            dsvlog( LOG_ERR, "Unable to find dsv: %s", dsv_name );
             return rc;
         }
 
@@ -202,7 +202,7 @@ int ProcessDelItem( int argc, char **argv )
         void *hndl = DSV_Handle( g_state.dsv_ctx, dsv_name );
         if( hndl == NULL )
         {
-            syslog( LOG_ERR, "Unable to find dsv: %s", dsv_name );
+            dsvlog( LOG_ERR, "Unable to find dsv: %s", dsv_name );
             return rc;
         }
 
@@ -247,7 +247,7 @@ int ProcessSetItem( int argc, char **argv )
 
         if( hndl == NULL )
         {
-            syslog( LOG_ERR, "Unable to find dsv: %s", dsv_name );
+            dsvlog( LOG_ERR, "Unable to find dsv: %s", dsv_name );
             return rc;
         }
 
@@ -294,7 +294,7 @@ int ProcessGetItem( int argc, char **argv )
         void *hndl = DSV_Handle( g_state.dsv_ctx, dsv_name );
         if( hndl == NULL )
         {
-            syslog( LOG_ERR, "Unable to find dsv: %s", dsv_name );
+            dsvlog( LOG_ERR, "Unable to find dsv: %s", dsv_name );
             return rc;
         }
 
@@ -444,6 +444,8 @@ int main( int argc, char *argv[] )
     {
         exit( EXIT_FAILURE );
     }
+
+    DSV_LogInit();
 
     switch( g_state.operation )
     {

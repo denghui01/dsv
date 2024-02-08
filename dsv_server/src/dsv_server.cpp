@@ -31,7 +31,6 @@ SOFTWARE.
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <syslog.h>
 #include <assert.h>
 #include <signal.h>
 #include <errno.h>
@@ -40,6 +39,7 @@ SOFTWARE.
 #include "dsv.h"
 #include "dsv_msg.h"
 #include "dsv_var.h"
+#include "dsv_log.h"
 
 /*==============================================================================
                               Defines
@@ -154,7 +154,7 @@ static int dsv_handle_reply()
     rc = zmq_recv( rep_sock, req_buf, BUFSIZE, 0 );
     if( rc == -1 )
     {
-        syslog( LOG_ERR, "zmq_recv failed: %s", strerror( errno ) );
+        dsvlog( LOG_ERR, "zmq_recv failed: %s", strerror( errno ) );
         return rc;
     }
 
@@ -191,14 +191,14 @@ static int dsv_handle_reply()
         break;
 
     default:
-        syslog( LOG_ERR, "Unsupported request type!" );
+        dsvlog( LOG_ERR, "Unsupported request type!" );
         break;
     }
 
     rc = zmq_send( rep_sock, rep_buf, rep->length, 0 );
     if( rc == -1 )
     {
-        syslog( LOG_ERR, "zmq_send failed: %s", strerror( errno ) );
+        dsvlog( LOG_ERR, "zmq_send failed: %s", strerror( errno ) );
         return rc;
     }
 
@@ -229,7 +229,7 @@ static int dsv_handle_frontend()
     rc = zmq_recv( frontend, req_buf, BUFSIZE, 0 );
     if( rc == -1 )
     {
-        syslog( LOG_ERR, "zmq_recv failed: %s", strerror( errno ) );
+        dsvlog( LOG_ERR, "zmq_recv failed: %s", strerror( errno ) );
         return rc;
     }
 
@@ -260,7 +260,7 @@ static int dsv_handle_frontend()
         break;
 
     default:
-        syslog( LOG_ERR, "Unsupported request type!" );
+        dsvlog( LOG_ERR, "Unsupported request type!" );
         break;
     }
 
@@ -270,7 +270,7 @@ static int dsv_handle_frontend()
         rc = zmq_send( backend, fwd->data, fwd->length, 0 );
         if( rc == -1 )
         {
-            syslog( LOG_ERR, "zmq_send failed: %s", strerror( errno ) );
+            dsvlog( LOG_ERR, "zmq_send failed: %s", strerror( errno ) );
             return rc;
         }
     }
@@ -299,7 +299,7 @@ static int dsv_handle_backend()
     rc = zmq_recv( backend, sub_buf, BUFSIZE, 0 );
     if( rc == -1 )
     {
-        syslog( LOG_ERR, "zmq_recv failed: %s", strerror( errno ) );
+        dsvlog( LOG_ERR, "zmq_recv failed: %s", strerror( errno ) );
         return rc;
     }
 
@@ -309,7 +309,7 @@ static int dsv_handle_backend()
         rc = zmq_send( backend, fwd_data, fwd->length, 0 );
         if( rc == -1 )
         {
-            syslog( LOG_ERR, "zmq_send failed: %s", strerror( errno ) );
+            dsvlog( LOG_ERR, "zmq_send failed: %s", strerror( errno ) );
             return rc;
         }
     }
@@ -345,7 +345,7 @@ static int mainloop()
         /* zmq_poll provides level-triggered fashion */
         if( zmq_poll( items, 4, -1 ) == -1 )
         {
-            syslog( LOG_ERR, "zmq_poll failed: %s", strerror( errno ) );
+            dsvlog( LOG_ERR, "zmq_poll failed: %s", strerror( errno ) );
             break;
         }
 
@@ -354,7 +354,7 @@ static int mainloop()
         {
             char buffer[1];
             read( pipefds[0], buffer, 1 );  // clear notifying byte
-            syslog( LOG_WARNING, "interrupt received, killing server...\n" );
+            dsvlog( LOG_WARNING, "interrupt received, killing server...\n" );
             break;
         }
 
@@ -389,7 +389,7 @@ static int mainloop()
 ==============================================================================*/
 static void dsv_server_destroy()
 {
-    syslog( LOG_ERR, "Exit and clean up proxy!" );
+    dsvlog( LOG_ERR, "Exit and clean up proxy!" );
 
     /* clean up discover server */
     zstr_sendx( (zactor_t *)g_state.speaker, "SILENCE", NULL );
@@ -450,7 +450,7 @@ static int dsv_setup_frontend()
     }
     else
     {
-        syslog( LOG_ERR, "Error calling zmq_bind: %s", strerror( errno ) );
+        dsvlog( LOG_ERR, "Error calling zmq_bind: %s", strerror( errno ) );
         zmq_close( sock );
         g_state.sock_frontend = NULL;
     }
@@ -481,7 +481,7 @@ static int dsv_setup_backend()
     }
     else
     {
-        syslog( LOG_ERR, "Error calling zmq_bind: %s", strerror( errno ) );
+        dsvlog( LOG_ERR, "Error calling zmq_bind: %s", strerror( errno ) );
         zmq_close( sock );
         g_state.sock_backend = NULL;
     }
@@ -512,7 +512,7 @@ static int dsv_setup_reply()
     }
     else
     {
-        syslog( LOG_ERR, "Error calling zmq_bind: %s", strerror( errno ) );
+        dsvlog( LOG_ERR, "Error calling zmq_bind: %s", strerror( errno ) );
         zmq_close( sock );
         g_state.sock_reply = NULL;
     }
@@ -561,25 +561,25 @@ static int dsv_server_init_zmq()
                 rc = dsv_setup_reply();
                 if( rc != 0 )
                 {
-                    syslog( LOG_ERR, "Failed to setup dsv reply" );
+                    dsvlog( LOG_ERR, "Failed to setup dsv reply" );
                     rc = -1;
                 }
             }
             else
             {
-                syslog( LOG_ERR, "Failed to setup dsv backend" );
+                dsvlog( LOG_ERR, "Failed to setup dsv backend" );
                 rc = -1;
             }
         }
         else
         {
-            syslog( LOG_ERR, "Failed to setup dsv frontend" );
+            dsvlog( LOG_ERR, "Failed to setup dsv frontend" );
             rc = -1;
         }
     }
     else
     {
-        syslog( LOG_ERR, "Error calling zmq_ctx_new, exiting" );
+        dsvlog( LOG_ERR, "Error calling zmq_ctx_new, exiting" );
         rc = -1;
     }
 
@@ -640,6 +640,7 @@ int main( int argc, char **argv )
     }
 
     /* initialize dsv module */
+    DSV_LogInit();
     rc = dsv_server_init();
     if( rc == 0 )
     {

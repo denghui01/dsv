@@ -32,11 +32,11 @@ SOFTWARE.
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
-#include <syslog.h>
 #include <assert.h>
 #include "zmq.h"
 #include "dsv.h"
 #include "dsv_msg.h"
+#include "dsv_log.h"
 #include "cjson/cJSON.h"
 
 typedef enum dsv_operation
@@ -168,7 +168,7 @@ static int ProcessSub( int argc, char **argv )
     }
     else
     {
-        syslog( LOG_ERR, "Failed to subscribe DSVs\n" );
+        dsvlog( LOG_ERR, "Failed to subscribe DSVs\n" );
     }
 
     return rc;
@@ -463,6 +463,8 @@ int main( int argc, char *argv[] )
     {
         exit( EXIT_FAILURE );
     }
+
+    DSV_LogInit();
 
     switch( g_state.operation )
     {

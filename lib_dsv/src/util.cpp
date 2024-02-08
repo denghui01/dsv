@@ -26,12 +26,12 @@ SOFTWARE.
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
-#include <syslog.h>
 #include <assert.h>
 #include <inttypes.h>
 #include <vector>
 #include "dsv.h"
 #include "dsv_msg.h"
+#include "dsv_log.h"
 
 using dsv_array_t = std::vector<int>;
 
@@ -222,7 +222,7 @@ int DSV_Str2Value( const char *str, dsv_info_t *pDsv )
         pDsv->value.f64 = strtold( str, NULL );
         break;
     default:
-        syslog( LOG_ERR, "Invalid dsv type to convert!" );
+        dsvlog( LOG_ERR, "Invalid dsv type to convert!" );
         rc = EINVAL;
         break;
     }
@@ -405,7 +405,7 @@ int DSV_Double2Value( double df, dsv_info_t *pDsv )
         pDsv->value.f64 = df;
         break;
     default:
-        syslog( LOG_ERR, "Invalid dsv type to convert!" );
+        dsvlog( LOG_ERR, "Invalid dsv type to convert!" );
         rc = EINVAL;
         break;
     }
@@ -478,7 +478,7 @@ dsv_type_t DSV_GetTypeFromStr( const char *type_str )
     {
         return DSV_TYPE_SINT8;
     }
-    syslog( LOG_ERR, "Unsupported type of dsv" );
+    dsvlog( LOG_ERR, "Unsupported type of dsv" );
     return DSV_TYPE_INVALID;
 }
 
@@ -534,7 +534,7 @@ int DSV_GetSizeFromType( int type )
         rc = sizeof(int8_t);
         break;
     default:
-        syslog( LOG_ERR, "Unsupported type" );
+        dsvlog( LOG_ERR, "Unsupported type" );
         break;
     }
 

@@ -29,7 +29,6 @@ SOFTWARE.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <syslog.h>
 #include <assert.h>
 #include <errno.h>
 #include <unordered_map>
@@ -40,6 +39,7 @@ SOFTWARE.
 #include "zmq.h"
 #include "dsv.h"
 #include "dsv_msg.h"
+#include "dsv_log.h"
 
 /*! hasp table to hold the dsv name and dsv info data */
 std::unordered_map<std::string, void *> g_map;
@@ -137,7 +137,7 @@ int var_create( const char *req_buf, char *fwd_buf )
         }
         else
         {
-            syslog( LOG_ERR, "dsv existed: %s", full_name.c_str() );
+            dsvlog( LOG_ERR, "dsv existed: %s", full_name.c_str() );
             rc = EEXIST;
         }
     }
@@ -464,7 +464,7 @@ int var_get_next( const char *req_buf, char *rep_buf )
     assert( rep_buf );
     printf( "Enter %s\n", __func__ );
 
-    int rc = EINVAL;
+    int rc = ENOENT;
     dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
     char *req_data = req->data;
 
