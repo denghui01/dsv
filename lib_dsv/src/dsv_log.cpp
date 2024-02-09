@@ -108,7 +108,7 @@ void DSV_LogInit(void *ctx, const char *logmask)
     /* determine the process is running background or not */
     g_run_in_foreground = (getpgrp() == tcgetpgrp(STDOUT_FILENO));
 
-    if( ctx != NULL )
+    if( ctx != NULL && logmask != NULL)
     {
         /* create console log mask dsv */
         dsv_info_t dsv;

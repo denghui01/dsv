@@ -109,3 +109,75 @@ void* DSV_RunServer()
 
     return speaker;
 }
+
+static uint32_t hash(unsigned char *str)
+{
+    assert(str);
+    uint32_t hash = 5381;
+    int c;
+
+    while (c = *str++)
+        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+
+    return hash;
+}
+
+static int localIP(const char *if_name, char *ip, size_t size)
+{
+    assert(ip);
+    struct ifaddrs* ifAddrStruct = NULL;
+    struct ifaddrs* ifa = NULL;
+    void* tmpAddrPtr = NULL;
+    int rc = EINVAL;
+
+    getifaddrs(&ifAddrStruct);
+
+    for (ifa = ifAddrStruct; ifa != NULL; ifa = ifa->ifa_next)
+    {
+        if (ifa->ifa_addr->sa_family == AF_INET)
+        {
+            tmpAddrPtr = &((struct sockaddr_in*)ifa->ifa_addr)->sin_addr;
+            inet_ntop(AF_INET, tmpAddrPtr, ip, size);
+            if( if_name != NULL )
+            {
+                if( strcmp(ifa->ifa_name, if_name) == 0 )
+                {
+                    rc = 0;
+                    break;
+                }
+            }
+            else
+            {
+                if( atoi(ip) != 127 )
+                {
+                    /* Don't use loopback interface */
+                    rc = 0;
+                    break;
+                }
+            }
+        }
+    }
+    if (ifAddrStruct != NULL)
+    {
+        freeifaddrs(ifAddrStruct);//remember to free ifAddrStruct
+    }
+
+    return rc;
+}
+
+/**
+* We here use local IP to generate instID from its hash value
+*/
+uint32_t DSV_GetInstID(const char *if_name)
+{
+    char ip[64];
+    uint32_t instID = 0;
+
+    int rc = localIP( if_name, ip, 64 );
+    if( rc == 0 )
+    {
+        instID = hash( (unsigned char *)ip );
+    }
+    return instID;
+}
+

@@ -561,7 +561,10 @@ int main( int argc, char *argv[] )
         exit( EXIT_FAILURE );
     }
 
-    DSV_LogInit();
+    DSV_LogInit(NULL, NULL);
+
+//  uint32_t instID = DSV_GetInstID("ens34") & 0x000FFFF;
+//  dsvlog(LOG_DEBUG, "instID=%u", instID);
 
     switch( g_state.operation )
     {

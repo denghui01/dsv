@@ -253,7 +253,7 @@ void DSV_Print( const dsv_info_t *pDsv );
 /* dsv discovery */
 int DSV_DiscoverServer( char *server_ip, size_t size );
 void *DSV_RunServer();
-
+uint32_t DSV_GetInstID( const char *if_name );
 
 #if 0
 

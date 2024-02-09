@@ -640,7 +640,7 @@ int main( int argc, char **argv )
     }
 
     /* initialize dsv module */
-    DSV_LogInit();
+    DSV_LogInit( NULL, NULL );
     rc = dsv_server_init();
     if( rc == 0 )
     {

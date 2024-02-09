@@ -34,7 +34,7 @@ SOFTWARE.
 #define        LOG_INFO        6        /* informational */
 #define        LOG_DEBUG        7        /* debug-level messages */
 
-void DSV_LogInit(void *ctx = NULL, const char *logmask = NULL);
+void DSV_LogInit(void *ctx, const char *logmask);
 void DSV_SetLogmask( uint32_t mask );
 void dsvlog( int priority, const char* format, ... );
 #endif

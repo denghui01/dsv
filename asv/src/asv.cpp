@@ -445,7 +445,7 @@ int main( int argc, char *argv[] )
         exit( EXIT_FAILURE );
     }
 
-    DSV_LogInit();
+    DSV_LogInit(NULL, NULL);
 
     switch( g_state.operation )
     {
