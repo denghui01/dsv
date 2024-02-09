@@ -32,7 +32,9 @@ SOFTWARE.
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#include <fcntl.h>
 #include <assert.h>
+#include <signal.h>
 #include "zmq.h"
 #include "dsv.h"
 #include "dsv_msg.h"
@@ -63,6 +65,65 @@ struct state
 /*==============================================================================
                            Function Definitions
 ==============================================================================*/
+/*==============================================================================
+    Termination handlings
+==============================================================================*/
+#define S_NOTIFY_MSG " "
+#define S_ERROR_MSG "Error while writing to self-pipe.\n"
+static int s_fd;
+static int pipefds[2];
+static void s_signal_handler( int signal_value )
+{
+    signal_value = signal_value;
+    int rc = write( s_fd, S_NOTIFY_MSG, sizeof(S_NOTIFY_MSG) );
+    if( rc != sizeof(S_NOTIFY_MSG) )
+    {
+        write( STDOUT_FILENO, S_ERROR_MSG, sizeof(S_ERROR_MSG) - 1 );
+        exit( 1 );
+    }
+}
+
+static void s_catch_signals( int fd )
+{
+    s_fd = fd;
+
+    struct sigaction action;
+    action.sa_handler = s_signal_handler;
+    //  Doesn't matter if SA_RESTART set because self-pipe will wake up zmq_poll
+    //  But setting to 0 will allow zmq_read to be interrupted.
+    action.sa_flags = 0;
+    sigemptyset( &action.sa_mask );
+    sigaction( SIGINT, &action, NULL );
+    sigaction( SIGTERM, &action, NULL );
+}
+
+static void s_create_pipe()
+{
+    int rc;
+    rc = pipe( pipefds );
+    if( rc != 0 )
+    {
+        perror( "Creating self-pipe" );
+        exit( 1 );
+    }
+    for( int i = 0; i < 2; i++ )
+    {
+        int flags = fcntl( pipefds[i], F_GETFL, 0 );
+        if( flags < 0 )
+        {
+            perror( "fcntl(F_GETFL)" );
+            exit( 1 );
+        }
+        rc = fcntl( pipefds[i], F_SETFL, flags | O_NONBLOCK );
+        if( rc != 0 )
+        {
+            perror( "fcntl(F_SETFL)" );
+            exit( 1 );
+        }
+    }
+
+    s_catch_signals( pipefds[1] );
+}
 
 /*!=============================================================================
     Display the usage information for the command.
@@ -89,6 +150,55 @@ static void usage( void )
              "   sv get [123]/SYS/STS/DEVICE_NAME\n"
              "   sv sub [123]/SYS/STS/DEVICE_NAME\n"
            );
+}
+
+static int HandleNotification( void )
+{
+    char full_name[DSV_STRING_SIZE_MAX];
+    char value[DSV_STRING_SIZE_MAX];
+    void *hndl;
+    int rc = 0;
+    rc = DSV_GetNotification( g_state.dsv_ctx,
+                              &hndl,
+                              full_name,
+                              DSV_STRING_SIZE_MAX,
+                              value,
+                              DSV_STRING_SIZE_MAX );
+    if( rc == 0 )
+    {
+        dsv_info_t dsv;
+        dsv.type = DSV_Type( g_state.dsv_ctx, hndl);
+        if( dsv.type == DSV_TYPE_STR )
+        {
+            printf( "%s=%s\n", full_name, value );
+        }
+        else if( dsv.type == DSV_TYPE_INT_ARRAY )
+        {
+            dsv.len = DSV_Len(g_state.dsv_ctx, hndl);
+            dsv_array_t ai((int *)value, (int *)(value + dsv.len) );
+            printf( "%s=", full_name );
+            for(int i = 0; i < ai.size(); i++)
+            {
+                if( i != ai.size() - 1 )
+                {
+                    printf( "%d,", ai[i] );
+                }
+                else
+                {
+                    printf( "%d\n", ai[i] );
+                }
+
+            }
+        }
+        else
+        {
+            dsv.value = *(dsv_value_t *)value;
+            DSV_Value2Str( value, DSV_STRING_SIZE_MAX, &dsv );
+            printf( "%s=%s\n", full_name, value );
+        }
+    }
+
+    return rc;
 }
 
 /*!=============================================================================
@@ -120,49 +230,36 @@ static int ProcessSub( int argc, char **argv )
 
     if( rc == 0 )
     {
+        s_create_pipe();
+
+        dsv_context_t *dsv_ctx = (dsv_context_t *)g_state.dsv_ctx;
+
+        zmq_pollitem_t items[] = {
+            { 0, pipefds[0], ZMQ_POLLIN, 0 },
+            { dsv_ctx->sock_subscribe, 0, ZMQ_POLLIN, 0 }
+        };
         while( 1 )
         {
-            char full_name[DSV_STRING_SIZE_MAX];
-            char value[DSV_STRING_SIZE_MAX];
-            rc = DSV_GetNotification( g_state.dsv_ctx,
-                                      full_name,
-                                      DSV_STRING_SIZE_MAX,
-                                      value,
-                                      DSV_STRING_SIZE_MAX );
-            if( rc == 0 )
+            /* zmq_poll provides level-triggered fashion */
+            if( zmq_poll( items, 2, -1 ) == -1 )
             {
-                dsv_info_t dsv;
-                void *hndl = DSV_Handle( g_state.dsv_ctx, full_name );
-                assert(hndl);
-                dsv.type = DSV_Type( g_state.dsv_ctx, hndl);
-                if( dsv.type == DSV_TYPE_STR )
-                {
-                    printf( "%s=%s\n", full_name, value );
-                }
-                else if( dsv.type == DSV_TYPE_INT_ARRAY )
-                {
-                    dsv.len = DSV_Len(g_state.dsv_ctx, hndl);
-                    dsv_array_t ai((int *)value, (int *)(value + dsv.len) );
-                    printf( "%s=", full_name );
-                    for(int i = 0; i < ai.size(); i++)
-                    {
-                        if( i != ai.size() - 1 )
-                        {
-                            printf( "%d,", ai[i] );
-                        }
-                        else
-                        {
-                            printf( "%d\n", ai[i] );
-                        }
+                dsvlog( LOG_ERR, "zmq_poll failed: %s", strerror( errno ) );
+                break;
+            }
 
-                    }
-                }
-                else
-                {
-                    dsv.value = *(dsv_value_t *)value;
-                    DSV_Value2Str( value, DSV_STRING_SIZE_MAX, &dsv );
-                    printf( "%s=%s\n", full_name, value );
-                }
+            /* Signal pipe FD */
+            if( items[0].revents & ZMQ_POLLIN )
+            {
+                char buffer[1];
+                read( pipefds[0], buffer, 1 );  // clear notifying byte
+                dsvlog( LOG_WARNING, "interrupt received, killing server...\n" );
+                break;
+            }
+
+            /*  new publish from frontend, update cache and then forward */
+            if( items[1].revents & ZMQ_POLLIN )
+            {
+                rc = HandleNotification();
             }
         }
     }

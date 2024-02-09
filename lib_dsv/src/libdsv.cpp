@@ -55,17 +55,6 @@ SOFTWARE.
                               Structures
 ==============================================================================*/
 
-/*! internal structure maintained by the library to manage connections with
- * the dsv server */
-typedef struct dsv_context
-{
-    void *zmq_ctx;
-    void *sock_request;
-    void *sock_publish;
-    void *sock_subscribe;
-
-} dsv_context_t;
-
 /*==============================================================================
                         Local/Private Function Protoypes
 ==============================================================================*/
@@ -1355,6 +1344,7 @@ int DSV_SubByName( void *ctx, const char *name )
  *
  */
 int DSV_GetNotification( void *ctx,
+                         void **hndl,
                          char *name,
                          size_t nlen,
                          char *value,
@@ -1363,13 +1353,20 @@ int DSV_GetNotification( void *ctx,
     assert( ctx );
     assert( name );
     assert( value );
+    assert( hndl );
 
     char sub_buf[BUFSIZE];
+    char *data = sub_buf;
     int rc = dsv_RecvMsg( ctx, sub_buf, sizeof(sub_buf) );
     if( rc == 0 )
     {
-        strncpy( name, sub_buf, nlen );
-        memcpy( value, sub_buf + strlen( sub_buf ) + 1, vlen );
+        strncpy( name, data, nlen );
+        data += strlen(name) + 1;
+
+        *hndl = *(void **)data;
+        data += sizeof(hndl);
+
+        memcpy( value, data, vlen );
     }
 
     return rc;

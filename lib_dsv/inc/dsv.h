@@ -154,6 +154,17 @@ typedef struct dsv_info
 
 }dsv_info_t;
 
+/*! internal structure maintained by the library to manage connections with
+ * the dsv server */
+typedef struct dsv_context
+{
+    void *zmq_ctx;
+    void *sock_request;
+    void *sock_publish;
+    void *sock_subscribe;
+
+} dsv_context_t;
+
 /*==============================================================================
                            Function Declarations
 ==============================================================================*/
@@ -200,7 +211,12 @@ template<typename T>
 int DSV_Get( void *ctx, void *hndl, T *value );
 
 /* get notifications of subscribed dsvs*/
-int DSV_GetNotification( void *ctx, char *name, size_t nlen, char *value, size_t vlen );
+int DSV_GetNotification( void *ctx,
+                         void **hndl,
+                         char *name,
+                         size_t nlen,
+                         char *value,
+                         size_t vlen );
 
 /* int array dsv operations */
 int DSV_InsItemToArray( void *ctx, void *hndl, int index, int value );

@@ -73,11 +73,15 @@ void fill_fwd_buf( const char *full_name, dsv_info_t *dsv, char *fwd_buf )
 
     dsv_msg_forward_t *fwd = (dsv_msg_forward_t *)fwd_buf;
     char *fwd_data = fwd->data;
-
     fwd->length = 0;
+
     strcpy( fwd_data, full_name );
     fwd->length += strlen( full_name ) + 1;
     fwd_data += strlen( full_name ) + 1;
+
+    *(dsv_info_t **)fwd_data = dsv;
+    fwd_data += sizeof(dsv);
+    fwd->length += sizeof(dsv);
 
     fwd->length += DSV_Memcpy( fwd_data, dsv );
 }
