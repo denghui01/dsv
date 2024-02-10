@@ -700,7 +700,10 @@ void* DSV_Handle( void *ctx, const char *name )
     rc = dsv_SendMsg( ctx, req_buf, req->length, rep_buf, sizeof(rep_buf) );
     if( rc != 0 )
     {
-        dsvlog( LOG_ERR, "Failed to send message to the server: %s", name );
+        if( rc != ENOENT )
+        {
+            dsvlog( LOG_ERR, "Failed to send message to the server: %s", name );
+        }
         return NULL;
     }
     handle = *(void **)rep_data;

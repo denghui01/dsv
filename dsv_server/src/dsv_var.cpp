@@ -366,7 +366,7 @@ int var_get_handle( const char *req_buf, char *rep_buf )
     assert( rep_buf );
     printf( "Enter %s\n", __func__ );
 
-    int rc = EINVAL;
+    int rc = ENOENT;
     dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
     char *req_data = req->data;
 

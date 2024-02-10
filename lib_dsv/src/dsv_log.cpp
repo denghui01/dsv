@@ -99,37 +99,38 @@ void dsvlog( int priority, const char* format, ... )
     Initialize dsv log service with the module name
 
 @param[in]
-    logmask
-        the name of logmask dsv , like "[0]/SYS/DEVMAN/LOGMASK".
+    log_level
+        the name of log_level dsv , like "[0]/SYS/DEV/LOG_LEVEL".
 ==============================================================================*/
-void DSV_LogInit(void *ctx, const char *logmask)
+void DSV_LogInit(void *ctx, const char *log_level)
 {
     int rc = 0;
     /* determine the process is running background or not */
     g_run_in_foreground = (getpgrp() == tcgetpgrp(STDOUT_FILENO));
 
-    if( ctx != NULL && logmask != NULL)
+    if( ctx != NULL && log_level != NULL)
     {
         /* create console log mask dsv */
         dsv_info_t dsv;
         char name[DSV_STRING_SIZE_MAX];
-        sscanf(logmask, "[%d]%s", &dsv.instID, name);
-        dsv.pName = name;
+        sscanf(log_level, "[%d]", &dsv.instID);
+        dsv.pName = strdup(log_level);
         dsv.type = DSV_TYPE_UINT32;
-        dsv.value.u32 = ~0;
+        dsv.value.u32 = LOG_WARNING;
         rc = DSV_Create( ctx, dsv.instID, &dsv );
+        free( dsv.pName );
         if( rc != 0 )
         {
             /* continue even fail one dsv */
-            dsvlog( LOG_ERR, "Failed to create dsv: %s", logmask );
+            dsvlog( LOG_ERR, "Failed to create dsv: %s", log_level );
         }
 
-        /* subscribe the sysvar */
-        rc = DSV_SubByName( ctx, logmask );
+        /* subscribe the dsv */
+        rc = DSV_SubByName( ctx, log_level );
         if( rc != 0 )
         {
             /* continue even fail one dsv */
-            dsvlog( LOG_ERR, "Failed to subscribe dsv: %s", logmask );
+            dsvlog( LOG_ERR, "Failed to subscribe dsv: %s", log_level );
         }
     }
 }
@@ -137,5 +138,10 @@ void DSV_LogInit(void *ctx, const char *logmask)
 void DSV_SetLogmask( uint32_t mask )
 {
     g_console_logmask = mask;
+}
+
+uint32_t DSV_GetLogmask()
+{
+    return g_console_logmask;
 }
 

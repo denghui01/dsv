@@ -11,4 +11,5 @@ dsv_server/doc/
 lib_dsv/build/
 lib_dsv/doc/
 asv/build
+devman/build
 Debug/

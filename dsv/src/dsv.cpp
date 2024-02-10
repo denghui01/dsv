@@ -52,7 +52,7 @@ typedef enum dsv_operation
 
 using dsv_array_t = std::vector<int>;
 
-struct state
+static struct state
 {
     void *dsv_ctx;
     int operation;
@@ -341,7 +341,7 @@ static int ProcessSet( int argc, char **argv )
     if( optind == argc - 2 )
     {
         /* the last two parameters should be dsv name and new value */
-        strncpy( g_state.dsv_name, argv[optind], DSV_STRING_SIZE_MAX );
+        strncpy( g_state.dsv_name, argv[optind++], DSV_STRING_SIZE_MAX );
         strncpy( g_state.dsv_val, argv[optind], DSV_STRING_SIZE_MAX );
         rc = DSV_SetByName( g_state.dsv_ctx, g_state.dsv_name, g_state.dsv_val );
     }
