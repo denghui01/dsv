@@ -174,12 +174,13 @@ static int HandleNotification( void )
         }
         else if( dsv.type == DSV_TYPE_INT_ARRAY )
         {
-            dsv.len = DSV_Len(g_state.dsv_ctx, hndl);
-            dsv_array_t ai((int *)value, (int *)(value + dsv.len) );
+            dsv.len = *(size_t *)value;
+            int size = dsv.len / sizeof(int);
+            int *ai = (int *)(value + sizeof(size_t));
             printf( "%s=", full_name );
-            for(int i = 0; i < ai.size(); i++)
+            for(int i = 0; i < size; i++)
             {
-                if( i != ai.size() - 1 )
+                if( i !=  size - 1 )
                 {
                     printf( "%d,", ai[i] );
                 }
@@ -187,7 +188,6 @@ static int HandleNotification( void )
                 {
                     printf( "%d\n", ai[i] );
                 }
-
             }
         }
         else

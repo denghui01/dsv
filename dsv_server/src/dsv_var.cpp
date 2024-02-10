@@ -229,7 +229,7 @@ int var_add_item( const char *req_buf, char *fwd_buf )
         dsv_array_t *ai =  (dsv_array_t *)dsv->value.pArray;
         ai->push_back(value);
         dsv->len = ai->size() * sizeof(int);
-
+        printf("%s: fill fwd buff: %s, len = %d\n", __func__, dsv->pName, dsv->len);
         fill_fwd_buf( dsv->pName, dsv, fwd_buf );
         rc = 0;
     }

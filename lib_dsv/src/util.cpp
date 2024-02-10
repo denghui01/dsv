@@ -95,10 +95,14 @@ int DSV_Memcpy( void *dest, dsv_info_t *dsv )
     }
     else if( dsv->type == DSV_TYPE_INT_ARRAY )
     {
-        memcpy( dest,
+        /* for array, the first chunk is data length in bytes, the receiver
+        * should be aware of that
+        */
+        *(size_t *)dest = dsv->len;
+        memcpy( (void *)((intptr_t)dest + sizeof(size_t)),
                 ((dsv_array_t *)dsv->value.pArray)->data(),
                 dsv->len );
-        rc += dsv->len;
+        rc += dsv->len + sizeof(size_t);
     }
     else
     {

@@ -1265,7 +1265,7 @@ int DSV_GetThruStr( void *ctx, void *hndl, char *value, size_t size )
 }
 
 /**
- * Get value for string type of dsv
+ * Get value for string or array type of dsv
  */
 int DSV_Get( void *ctx, void *hndl, char *value, size_t size )
 {

@@ -116,6 +116,7 @@ void DSV_LogInit(void *ctx, const char *log_level)
         sscanf(log_level, "[%d]", &dsv.instID);
         dsv.pName = strdup(log_level);
         dsv.type = DSV_TYPE_UINT32;
+        dsv.len = DSV_GetSizeFromType( dsv.type );
         dsv.value.u32 = LOG_WARNING;
         rc = DSV_Create( ctx, dsv.instID, &dsv );
         free( dsv.pName );

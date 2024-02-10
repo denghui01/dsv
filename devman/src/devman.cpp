@@ -77,8 +77,8 @@ static void handle_notifications()
             else if( hndl == g_state.hndl_devlist )
             {
                 /* handle devlist changes, here we simply print it */
-                int size = DSV_Len(g_state.dsv_ctx, hndl) / sizeof(int);
-                int *ai = (int *)value;
+                int size = *(size_t *)value / sizeof(int);
+                int *ai = (int *)(value + sizeof(size_t));
                 printf( "%s=", full_name );
                 for(int i = 0; i < size; i++)
                 {
