@@ -77,20 +77,9 @@ static void handle_notifications()
             else if( hndl == g_state.hndl_devlist )
             {
                 /* handle devlist changes, here we simply print it */
-                int size = *(size_t *)value / sizeof(int);
-                int *ai = (int *)(value + sizeof(size_t));
-                printf( "%s=", full_name );
-                for(int i = 0; i < size; i++)
-                {
-                    if( i !=  size - 1 )
-                    {
-                        printf( "%d,", ai[i] );
-                    }
-                    else
-                    {
-                        printf( "%d\n", ai[i] );
-                    }
-                }
+                char buffer[DSV_STRING_SIZE_MAX];
+                DSV_PrintArray( value, buffer, DSV_STRING_SIZE_MAX);
+                printf( "%s=%s", full_name, buffer );
             }
         }
     }

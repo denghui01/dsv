@@ -174,21 +174,9 @@ static int HandleNotification( void )
         }
         else if( dsv.type == DSV_TYPE_INT_ARRAY )
         {
-            dsv.len = *(size_t *)value;
-            int size = dsv.len / sizeof(int);
-            int *ai = (int *)(value + sizeof(size_t));
-            printf( "%s=", full_name );
-            for(int i = 0; i < size; i++)
-            {
-                if( i !=  size - 1 )
-                {
-                    printf( "%d,", ai[i] );
-                }
-                else
-                {
-                    printf( "%d\n", ai[i] );
-                }
-            }
+            char buffer[DSV_STRING_SIZE_MAX];
+            DSV_PrintArray( value, buffer, DSV_STRING_SIZE_MAX);
+            printf( "%s=%s", full_name, buffer );
         }
         else
         {

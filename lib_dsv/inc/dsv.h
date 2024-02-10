@@ -206,6 +206,9 @@ int DSV_GetThruStr( void *ctx, void *hndl, char *value, size_t size );
 /* dsv is string type, get the value */
 int DSV_Get( void *ctx, void *hndl, char *value, size_t size );
 
+/* dsv is array type, get the value */
+int DSV_Get( void *ctx, void *hndl, void *value, size_t size );
+
 /* dsv is numeric type, set the value */
 template<typename T>
 int DSV_Get( void *ctx, void *hndl, T *value );
@@ -240,6 +243,7 @@ int DSV_GetByNameFuzzy( void *ctx,
 
 /* dsv utilities */
 void *memdup( const void *buf, size_t count );
+void DSV_PrintArray( void *value, char *buffer, size_t size );
 int DSV_Memcpy( void *dest, dsv_info_t *dsv );
 int DSV_Str2Value( const char *str, dsv_info_t *pDsv );
 int DSV_Str2Array( const char *input, void **data, size_t *size );

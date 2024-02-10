@@ -1198,11 +1198,15 @@ int DSV_GetThruStr( void *ctx, void *hndl, char *value, size_t size )
         return rc;
     }
 
+    char data[DSV_STRING_SIZE_MAX];
     switch( type )
     {
     case DSV_TYPE_STR:
-    case DSV_TYPE_INT_ARRAY:
         rc = DSV_Get( ctx, hndl, value, size );
+        break;
+    case DSV_TYPE_INT_ARRAY:
+        rc = DSV_Get( ctx, hndl, (void *)data, DSV_STRING_SIZE_MAX );
+        DSV_PrintArray( data, value, size );
         break;
     case DSV_TYPE_UINT16:
         uint16_t u16;
@@ -1265,7 +1269,7 @@ int DSV_GetThruStr( void *ctx, void *hndl, char *value, size_t size )
 }
 
 /**
- * Get value for string or array type of dsv
+ * Get value for string type of dsv
  */
 int DSV_Get( void *ctx, void *hndl, char *value, size_t size )
 {
@@ -1293,6 +1297,45 @@ int DSV_Get( void *ctx, void *hndl, char *value, size_t size )
     strncpy( value, rep_data, size );
     return rc;
 }
+
+/**
+ * Get value for array type of dsv
+ */
+int DSV_Get( void *ctx, void *hndl, void *value, size_t size )
+{
+    assert( ctx );
+    assert( hndl );
+    assert( value );
+
+    int rc = EINVAL;
+    char req_buf[BUFSIZE];
+    dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
+    char *req_data = req->data;
+
+    char rep_buf[BUFSIZE];
+    dsv_msg_reply_t *rep = (dsv_msg_reply_t *)rep_buf;
+    char *rep_data = rep->data;
+
+    fill_req_buf(req_buf, DSV_MSG_GET, hndl);
+
+    rc = dsv_SendMsg( ctx, req_buf, req->length, rep_buf, sizeof(rep_buf) );
+    if( rc != 0 )
+    {
+        dsvlog( LOG_ERR, "Failed to send message to the server" );
+        return EFAULT;
+    }
+
+    /* real size should include size itself */
+    size_t real_size = *(size_t *)rep_data + sizeof(size_t);
+    if( real_size > size )
+    {
+        dsvlog( LOG_ERR, "Value buffer is not big enough" );
+        return EFAULT;
+    }
+    memcpy( value, rep_data, real_size );
+    return rc;
+}
+
 
 /**
  * Get value for numeric type of dsv
