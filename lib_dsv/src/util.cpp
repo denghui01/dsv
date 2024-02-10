@@ -29,11 +29,21 @@ SOFTWARE.
 #include <assert.h>
 #include <inttypes.h>
 #include <vector>
+#include <ctype.h>
 #include "dsv.h"
 #include "dsv_msg.h"
 #include "dsv_log.h"
 
 using dsv_array_t = std::vector<int>;
+
+void strtoupper(char *str)
+{
+    assert(str);
+    for(int i = 0; i < strlen(str); ++i)
+    {
+        str[i] = toupper(str[i]);
+    }
+}
 
 /*!=============================================================================
 
@@ -72,15 +82,15 @@ void DSV_PrintArray( void *value, char *buffer, size_t size )
     int arr_size = *(size_t *)value / sizeof(int);
     int *ai = (int *)((intptr_t)value + sizeof(size_t));
     int rc = 0;
-    for(int i = 0; i < size; i++)
+    for(int i = 0; i < arr_size; i++)
     {
-        if( i !=  size - 1 )
+        if( i !=  arr_size - 1 )
         {
-            rc = snprintf( buffer+rc, size-rc, "%d,", ai[i] );
+            rc += snprintf( buffer+rc, size-rc, "%d,", ai[i] );
         }
         else
         {
-            rc = snprintf( buffer+rc, size-rc, "%d\n", ai[i] );
+            rc += snprintf( buffer+rc, size-rc, "%d", ai[i] );
         }
     }
 }

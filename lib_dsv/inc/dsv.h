@@ -242,6 +242,7 @@ int DSV_GetByNameFuzzy( void *ctx,
                         size_t valuesz );
 
 /* dsv utilities */
+void strtoupper(char *str);
 void *memdup( const void *buf, size_t count );
 void DSV_PrintArray( void *value, char *buffer, size_t size );
 int DSV_Memcpy( void *dest, dsv_info_t *dsv );

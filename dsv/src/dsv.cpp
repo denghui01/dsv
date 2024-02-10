@@ -176,7 +176,7 @@ static int HandleNotification( void )
         {
             char buffer[DSV_STRING_SIZE_MAX];
             DSV_PrintArray( value, buffer, DSV_STRING_SIZE_MAX);
-            printf( "%s=%s", full_name, buffer );
+            printf( "%s=%s\n", full_name, buffer );
         }
         else
         {
@@ -213,6 +213,7 @@ static int ProcessSub( int argc, char **argv )
     {
         /* the rest of parameters should be multiple names */
         strncpy( g_state.dsv_name, argv[optind], DSV_STRING_SIZE_MAX );
+        strtoupper(g_state.dsv_name);
         rc = DSV_SubByName( g_state.dsv_ctx, g_state.dsv_name );
     }
 
@@ -286,6 +287,7 @@ static int ProcessGet( int argc, char **argv )
     {
         /* the rest of parameters should be multiple names */
         strncpy( g_state.dsv_name, argv[optind], DSV_STRING_SIZE_MAX );
+        strtoupper(g_state.dsv_name);
         int index = -1;
         do
         {
@@ -330,6 +332,7 @@ static int ProcessSet( int argc, char **argv )
     {
         /* the last two parameters should be dsv name and new value */
         strncpy( g_state.dsv_name, argv[optind++], DSV_STRING_SIZE_MAX );
+        strtoupper(g_state.dsv_name);
         strncpy( g_state.dsv_val, argv[optind], DSV_STRING_SIZE_MAX );
         rc = DSV_SetByName( g_state.dsv_ctx, g_state.dsv_name, g_state.dsv_val );
     }
@@ -372,6 +375,7 @@ static int ProcessCreate( int argc, char **argv )
                       "[%d]%s",
                       g_state.instID,
                       argv[optind] );
+            strtoupper(g_state.dsv.pName);
             rc = DSV_Create( g_state.dsv_ctx,
                              g_state.instID,
                              &g_state.dsv );

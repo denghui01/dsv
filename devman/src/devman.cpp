@@ -79,7 +79,7 @@ static void handle_notifications()
                 /* handle devlist changes, here we simply print it */
                 char buffer[DSV_STRING_SIZE_MAX];
                 DSV_PrintArray( value, buffer, DSV_STRING_SIZE_MAX);
-                printf( "%s=%s", full_name, buffer );
+                printf( "%s=%s\n", full_name, buffer );
             }
         }
     }
