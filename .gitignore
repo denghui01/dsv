@@ -13,3 +13,4 @@ lib_dsv/doc/
 asv/build
 devman/build
 Debug/
+build/

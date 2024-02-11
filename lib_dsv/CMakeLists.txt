@@ -10,15 +10,15 @@ set(PROJ_STATIC ${PROJECT_NAME}-static)
 
 # add include path
 include_directories(
-		${CMAKE_SOURCE_DIR}/inc
-        ${CMAKE_SOURCE_DIR}/..
+		${CMAKE_CURRENT_SOURCE_DIR}/inc
+        ${CMAKE_CURRENT_SOURCE_DIR}/..
 		)
 
 link_directories(
-		#${CMAKE_SOURCE_DIR}/../libcfu/build
+		#${CMAKE_CURRENT_SOURCE_DIR}/../libcfu/build
                 )
-
-aux_source_directory(${CMAKE_SOURCE_DIR}/src DIR_SRCS)
+message("CMAKE_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}")
+aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src DIR_SRCS)
 
 add_library(${PROJ_OBJ}
     OBJECT
