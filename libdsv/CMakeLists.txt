@@ -17,7 +17,7 @@ include_directories(
 link_directories(
 		#${CMAKE_CURRENT_SOURCE_DIR}/../libcfu/build
                 )
-message("CMAKE_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}")
+
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src DIR_SRCS)
 
 add_library(${PROJ_OBJ}

@@ -85,7 +85,7 @@ static void s_signal_handler( int signal_value )
     int rc = write( s_fd, S_NOTIFY_MSG, sizeof(S_NOTIFY_MSG) );
     if( rc != sizeof(S_NOTIFY_MSG) )
     {
-        write( STDOUT_FILENO, S_ERROR_MSG, sizeof(S_ERROR_MSG) - 1 );
+        rc = write( STDOUT_FILENO, S_ERROR_MSG, sizeof(S_ERROR_MSG) - 1 );
         exit( 1 );
     }
 }
@@ -353,7 +353,7 @@ static int mainloop()
         if( items[0].revents & ZMQ_POLLIN )
         {
             char buffer[1];
-            read( pipefds[0], buffer, 1 );  // clear notifying byte
+            int rc = read( pipefds[0], buffer, 1 );  // clear notifying byte
             dsvlog( LOG_WARNING, "interrupt received, killing server...\n" );
             break;
         }
