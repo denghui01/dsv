@@ -340,7 +340,6 @@ int DSV_Value2Str( char *buf, size_t len, const dsv_info_t *pDsv )
     {
     case DSV_TYPE_STR:
         rc = snprintf( buf, len, "%s", pDsv->value.pStr );
-        rc += 1; /* include terminated null byte */
         break;
     case DSV_TYPE_INT_ARRAY:
         rc = DSV_Array2Str( buf, len, pDsv );
@@ -377,11 +376,11 @@ int DSV_Value2Str( char *buf, size_t len, const dsv_info_t *pDsv )
         break;
     default:
         printf( "Unsupported type of dsv!\n" );
-        rc = EINVAL;
-        break;
+        return EINVAL;
     }
 
-    return rc;
+    /* rc for snprintf doesn't include null byte, so adjust it */
+    return rc + 1;
 }
 
 /*!=============================================================================
