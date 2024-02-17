@@ -16,5 +16,11 @@ link_directories(
 
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src DIR_SRCS)
 add_executable(${PROJECT_NAME} ${DIR_SRCS})
-#target_link_libraries(${PROJECT_NAME} PUBLIC dsv cjson czmq ${CMAKE_CURRENT_SOURCE_DIR}/../libzmq/src/.libs/libzmq.a unwind )
-target_link_libraries(${PROJECT_NAME} PUBLIC dsv cjson czmq zmq )
+
+if(CMAKE_CROSSCOMPILING)
+    target_link_libraries(${PROJECT_NAME} PUBLIC dsv cjson czmq ${CMAKE_CURRENT_SOURCE_DIR}/../libzmq/src/.libs/libzmq.a unwind )
+else()
+    target_link_libraries(${PROJECT_NAME} PUBLIC dsv cjson czmq zmq )
+endif()
+
+
