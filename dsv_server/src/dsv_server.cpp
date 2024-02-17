@@ -392,8 +392,11 @@ static void dsv_server_destroy()
     dsvlog( LOG_ERR, "Exit and clean up proxy!" );
 
     /* clean up discover server */
-    zstr_sendx( (zactor_t *)g_state.speaker, "SILENCE", NULL );
-    zactor_destroy( (zactor_t **)&g_state.speaker );
+    if( g_state.speaker != NULL )
+    {
+        zstr_sendx( (zactor_t *)g_state.speaker, "SILENCE", NULL );
+        zactor_destroy( (zactor_t **)&g_state.speaker );
+    }
 
     /* cleanup and terminate the process */
     if( g_state.sock_backend != NULL )
