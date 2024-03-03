@@ -6,12 +6,12 @@ project(devman)
 
 # add include path
 include_directories(
-        ${CMAKE_CURRENT_SOURCE_DIR}/..
+        #${CMAKE_CURRENT_SOURCE_DIR}/..
         ${CMAKE_CURRENT_SOURCE_DIR}/../libdsv/inc
 		)
 
 link_directories(
-		${CMAKE_CURRENT_SOURCE_DIR}/../libdsv/build
+		${CMAKE_CURRENT_SOURCE_DIR}/../build/libdsv
         )
 set(CMAKE_BUILD_TYPE Debug)
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src DIR_SRCS)
