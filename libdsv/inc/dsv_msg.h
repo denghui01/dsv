@@ -50,6 +50,7 @@ typedef enum DSV_MSG_TYPE
     DSV_MSG_GET_ITEM,
     DSV_MSG_APPLY_ID,
     DSV_MSG_SAVE,
+    DSV_MSG_RESTORE,
     DSV_MSG_MAX
 }dsv_msg_type_t;
 

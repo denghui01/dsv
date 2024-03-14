@@ -37,6 +37,7 @@ SOFTWARE.
 #include <string>
 #include <sstream>
 #include <fstream>
+#include <iostream>
 #include "zmq.h"
 #include "dsv.h"
 #include "dsv_msg.h"
@@ -546,7 +547,7 @@ int var_notify( char *sub_buf, char *fwd_buf )
 */
 int var_save()
 {
-    int rc = 0;
+    int rc = -1;
     printf( "Enter %s\n", __func__ );
 
     std::string filename{ DSV_SAVE_FILE };
@@ -556,7 +557,7 @@ int var_save()
     if (!s.is_open())
     {
         printf( "Failed to open %s\n", filename.c_str() );
-        return -1;
+        return rc;
     }
 
     dsv_info_t *pDsv;
@@ -570,13 +571,63 @@ int var_save()
                                 pDsv );
             if( rc != -1 )
             {
-                s << dsv_name << ":" << value_buf << ",";
+                s << dsv_name << "=" << value_buf << ";";
                 rc = 0;
             }
             pDsv->dirty = 0;
         }
     }
     s.flush();
+    return rc;
+}
+
+/** 
+* This function should be called after all dsvs are created
+* the dsv.save file should be like this
+* [123]/SYS/TEST/U16=16;[123]/SYS/TEST/U32=32;
+*@return 
+* -1: fail 
+*/
+int var_restore()
+{
+    int rc = -1;
+    printf( "Enter %s\n", __func__ );
+
+    std::string filename{ DSV_SAVE_FILE };
+
+    /* read entire file into string */
+    if (std::ifstream ifs{ filename, ifs.binary | ifs.ate })
+    {
+        auto size = ifs.tellg();
+        std::string save_str( size, '\0' );
+        ifs.seekg(0);
+        ifs.read( &save_str[0], size );
+
+        int out_pos = 0; // position of after ; delimiter
+        int in_pos = 0;  // position of after = delimiter
+        while( out_pos < save_str.size() )
+        {
+            in_pos = save_str.find( "=", out_pos );
+            std::string sv_name = save_str.substr( out_pos, in_pos - out_pos );
+            ++in_pos; // skip '='
+
+            out_pos = save_str.find( ";", out_pos );
+            std::string sv_value = save_str.substr( in_pos, out_pos - in_pos );
+            ++out_pos; // skip ';'
+
+            auto e = g_map.find( sv_name );
+            if( e != g_map.end() )
+            {
+                dsv_info_t *pDsv = (dsv_info_t *)e->second;
+                DSV_Str2Value( sv_value.c_str(), pDsv );
+            }
+        }
+        rc = 0;
+    }
+    else
+    {
+        std::cout << "Failed to open " << filename << std::endl;
+    }
     return rc;
 }
 

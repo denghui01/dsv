@@ -48,7 +48,8 @@ typedef enum dsv_operation
     DSV_SET,
     DSV_GET,
     DSV_SUB,
-    DSV_SAVE
+    DSV_SAVE,
+    DSV_RESTORE
 }dsv_op_t;
 
 using dsv_array_t = std::vector<int>;
@@ -267,6 +268,10 @@ static int ProcessSave( int argc, char **argv )
     return DSV_Save( g_state.dsv_ctx );
 }
 
+static int ProcessRestore( int argc, char **argv )
+{
+    return DSV_Restore( g_state.dsv_ctx );
+}
 /*!=============================================================================
 
     Process dsv get/read command
@@ -510,6 +515,11 @@ static int ProcessOptions( int argc, char **argv )
                 g_state.operation = DSV_SAVE;
                 optind++;
             }
+            else if( (strcmp( argv[optind], "restore" ) == 0) )
+            {
+                g_state.operation = DSV_RESTORE;
+                optind++;
+            }
             else
             {
                 fprintf( stderr, "Missing/Unspported operation type\n" );
@@ -586,6 +596,9 @@ int main( int argc, char *argv[] )
         break;
     case DSV_SAVE:
         rc = ProcessSave( argc, argv );
+        break;
+    case DSV_RESTORE:
+        rc = ProcessRestore( argc, argv );
         break;
     default:
         break;

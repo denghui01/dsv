@@ -102,7 +102,8 @@ static int dsv_SendMsg( void *ctx,
         req->type == DSV_MSG_DEL_ITEM ||
         req->type == DSV_MSG_ADD_ITEM ||
         req->type == DSV_MSG_SET_ITEM ||
-        req->type == DSV_MSG_SAVE )
+        req->type == DSV_MSG_SAVE ||
+        req->type == DSV_MSG_RESTORE )
     {
         /* create and set only use pub/sub pattern */
         rc = zmq_send( dsv_ctx->sock_publish, req_buf, req_len, 0 );
@@ -187,14 +188,14 @@ static int dsv_RecvMsg( void *ctx,
 }
 /*!=============================================================================
 
-    Read the JSON file into the buffer
+    Read the file into the buffer
 
 @param[in]
     file
-        JSON file name
+        File name
 @param[in]
     buf
-        buffer to hold the JSON file content
+        buffer to hold the file content
 @param[in]
     size
         size of buffer
@@ -203,7 +204,7 @@ static int dsv_RecvMsg( void *ctx,
     others - failed
 
 ==============================================================================*/
-static int dsv_ReadJsonFile( const char *file, char *buf, size_t size )
+static int dsv_ReadFile( const char *file, char *buf, size_t size )
 {
     assert( file );
     assert( buf );
@@ -586,7 +587,7 @@ int DSV_CreateWithJson( void *ctx, uint32_t instID, const char *file )
         return EINVAL;
     }
 
-    rc = dsv_ReadJsonFile( file, json_buf, DSV_JSON_FILE_SIZE_MAX );
+    rc = dsv_ReadFile( file, json_buf, DSV_JSON_FILE_SIZE_MAX );
     if( rc == 0 )
     {
         rc = dsv_ParseJsonStr( ctx, instID, json_buf );
@@ -1589,5 +1590,25 @@ int DSV_Save( void *ctx )
     return rc;
 }
 
+int DSV_Restore( void *ctx )
+{
+    assert(ctx);
+
+    int rc = EINVAL;
+    char req_buf[BUFSIZE];
+    dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
+
+    req->type = DSV_MSG_RESTORE;
+    req->length = sizeof(dsv_msg_request_t);
+
+    rc = dsv_SendMsg( ctx, req_buf, req->length, NULL, 0 );
+    if( rc != 0 )
+    {
+        dsvlog( LOG_ERR, "Failed to send message to the server" );
+        return EFAULT;
+    }
+
+    return rc;
+}
 /* end of libsysvars group */
 

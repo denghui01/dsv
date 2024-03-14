@@ -234,6 +234,9 @@ int DSV_GetNotification( void *ctx,
 /* persist changed dsvs */
 int DSV_Save( void *ctx );
 
+/* restore dsv value from persistent file */
+int DSV_Restore( void *ctx );
+
 /* int array dsv operations */
 int DSV_InsItemToArray( void *ctx, void *hndl, int index, int value );
 int DSV_SetItemInArray( void *ctx, void *hndl, int index, int value );

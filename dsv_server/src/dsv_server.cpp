@@ -262,6 +262,11 @@ static int dsv_handle_frontend()
     case DSV_MSG_SAVE:
         rc = var_save();
         break;
+
+    case DSV_MSG_RESTORE:
+        rc = var_restore();
+        break;
+
     default:
         dsvlog( LOG_ERR, "Unsupported request type!" );
         break;
