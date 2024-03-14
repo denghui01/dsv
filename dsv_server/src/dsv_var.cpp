@@ -620,9 +620,18 @@ int var_restore()
             {
                 dsv_info_t *pDsv = (dsv_info_t *)e->second;
                 DSV_Str2Value( sv_value.c_str(), pDsv );
+                pDsv->dirty = 1;
             }
         }
+
+        /* now clear the file */
+        ifs.close();
+        ifs.open( filename, ifs.out | ifs.trunc );
+        ifs.close();
+        /* re-construct dsv.save file again */
+        var_save();
         rc = 0;
+
     }
     else
     {
