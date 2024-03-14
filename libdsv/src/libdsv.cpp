@@ -101,7 +101,8 @@ static int dsv_SendMsg( void *ctx,
         req->type == DSV_MSG_INS_ITEM ||
         req->type == DSV_MSG_DEL_ITEM ||
         req->type == DSV_MSG_ADD_ITEM ||
-        req->type == DSV_MSG_SET_ITEM )
+        req->type == DSV_MSG_SET_ITEM ||
+        req->type == DSV_MSG_SAVE )
     {
         /* create and set only use pub/sub pattern */
         rc = zmq_send( dsv_ctx->sock_publish, req_buf, req_len, 0 );
@@ -336,6 +337,13 @@ static int dsv_ParseJsonStr( void *ctx, uint32_t instID, const char *buf )
             }
         }
 
+        /* handle dsv flags */
+        m = cJSON_GetObjectItem( e, "flags" );
+        if( cJSON_IsString( m ) && m->valuestring != NULL )
+        {
+            //printf("flags:%s\n",m->valuestring);
+            dsv.flags |= DSV_GetFlagsFromStr( m->valuestring );;
+        }
         rc = DSV_Create( ctx, instID, &dsv );
         if( rc != 0 )
         {
@@ -1393,7 +1401,7 @@ int DSV_GetNotification( void *ctx,
                          void **hndl,
                          char *name,
                          size_t nlen,
-                         char *value,
+                         void *value,
                          size_t vlen )
 {
     assert( ctx );
@@ -1559,5 +1567,27 @@ int DSV_GetItemFromArray( void *ctx, void *hndl, int index, int *value )
     *value = *(int *)rep_data;
     return rc;
 }
+
+int DSV_Save( void *ctx )
+{
+    assert(ctx);
+
+    int rc = EINVAL;
+    char req_buf[BUFSIZE];
+    dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
+
+    req->type = DSV_MSG_SAVE;
+    req->length = sizeof(dsv_msg_request_t);
+
+    rc = dsv_SendMsg( ctx, req_buf, req->length, NULL, 0 );
+    if( rc != 0 )
+    {
+        dsvlog( LOG_ERR, "Failed to send message to the server" );
+        return EFAULT;
+    }
+
+    return rc;
+}
+
 /* end of libsysvars group */
 

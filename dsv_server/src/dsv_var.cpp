@@ -36,6 +36,7 @@ SOFTWARE.
 #include <memory>
 #include <string>
 #include <sstream>
+#include <fstream>
 #include "zmq.h"
 #include "dsv.h"
 #include "dsv_msg.h"
@@ -45,6 +46,7 @@ SOFTWARE.
 std::unordered_map<std::string, void *> g_map;
 using dsv_array_t = std::vector<int>;
 
+#define DSV_SAVE_FILE       ("/var/run/dsv.save")
 /*==============================================================================
                               Defines
 ==============================================================================*/
@@ -183,6 +185,7 @@ int var_set( const char *req_buf, char *fwd_buf )
     {
         clock_gettime( CLOCK_REALTIME, &now );
         dsv->timestamp = now;
+        dsv->dirty = 1;
         if( dsv->type == DSV_TYPE_STR )
         {
             free( dsv->value.pStr );
@@ -225,6 +228,7 @@ int var_add_item( const char *req_buf, char *fwd_buf )
     {
         clock_gettime( CLOCK_REALTIME, &now );
         dsv->timestamp = now;
+        dsv->dirty = 1;
 
         dsv_array_t *ai =  (dsv_array_t *)dsv->value.pArray;
         ai->push_back(value);
@@ -255,6 +259,7 @@ int var_set_item( const char *req_buf, char *fwd_buf )
     {
         clock_gettime( CLOCK_REALTIME, &now );
         dsv->timestamp = now;
+        dsv->dirty = 1;
 
         dsv_array_t *ai =  (dsv_array_t *)dsv->value.pArray;
         (*ai)[index] = value;
@@ -285,6 +290,7 @@ int var_ins_item( const char *req_buf, char *fwd_buf )
     {
         clock_gettime( CLOCK_REALTIME, &now );
         dsv->timestamp = now;
+        dsv->dirty = 1;
 
         dsv_array_t *ai =  (dsv_array_t *)dsv->value.pArray;
         auto it = ai->begin();
@@ -315,6 +321,7 @@ int var_del_item( const char *req_buf, char *fwd_buf )
     {
         clock_gettime( CLOCK_REALTIME, &now );
         dsv->timestamp = now;
+        dsv->dirty = 1;
 
         dsv_array_t *ai = (dsv_array_t *)dsv->value.pArray;
         auto it = ai->begin();
@@ -530,6 +537,46 @@ int var_notify( char *sub_buf, char *fwd_buf )
             rc = 0;
         }
     }
+    return rc;
+}
+
+/**
+*@return 
+* -1: fail 
+*/
+int var_save()
+{
+    int rc = 0;
+    printf( "Enter %s\n", __func__ );
+
+    std::string filename{ DSV_SAVE_FILE };
+    std::fstream s{ filename, s.binary | s.in | s.out | s.app };
+    char value_buf[DSV_STRING_SIZE_MAX];
+
+    if (!s.is_open())
+    {
+        printf( "Failed to open %s\n", filename.c_str() );
+        return -1;
+    }
+
+    dsv_info_t *pDsv;
+    for( auto [dsv_name, dsv_info] : g_map )
+    {
+        dsv_info_t *pDsv = (dsv_info_t *)dsv_info;
+        if( pDsv->dirty && ( pDsv->flags & DSV_FLAG_SAVE ) )
+        {
+            rc = DSV_Value2Str( value_buf,
+                                DSV_STRING_SIZE_MAX,
+                                pDsv );
+            if( rc != -1 )
+            {
+                s << dsv_name << ":" << value_buf << ",";
+                rc = 0;
+            }
+            pDsv->dirty = 0;
+        }
+    }
+    s.flush();
     return rc;
 }
 

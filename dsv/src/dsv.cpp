@@ -47,7 +47,8 @@ typedef enum dsv_operation
     DSV_CREATE,
     DSV_SET,
     DSV_GET,
-    DSV_SUB
+    DSV_SUB,
+    DSV_SAVE
 }dsv_op_t;
 
 using dsv_array_t = std::vector<int>;
@@ -136,6 +137,7 @@ static void usage( void )
              "    -s/set/write - set a dsv value\n"
              "    -g/get/read - get a dsv value\n"
              "    -u/sub/subscribe - subscribe a dsv\n"
+             "    save - persist all sysvars that need to save\n"
              "    -f <file-name> - create a batch of DSVs from a JSON file\n"
              "    -i <instance ID> - create a DSV with instance ID\n"
              "    -y <type> - create a DSV with type\n"
@@ -258,6 +260,11 @@ static int ProcessSub( int argc, char **argv )
     }
 
     return rc;
+}
+
+static int ProcessSave( int argc, char **argv )
+{
+    return DSV_Save( g_state.dsv_ctx );
 }
 
 /*!=============================================================================
@@ -498,6 +505,11 @@ static int ProcessOptions( int argc, char **argv )
                 g_state.operation = DSV_SUB;
                 optind++;
             }
+            else if( (strcmp( argv[optind], "save" ) == 0) )
+            {
+                g_state.operation = DSV_SAVE;
+                optind++;
+            }
             else
             {
                 fprintf( stderr, "Missing/Unspported operation type\n" );
@@ -571,6 +583,9 @@ int main( int argc, char *argv[] )
         break;
     case DSV_SUB:
         rc = ProcessSub( argc, argv );
+        break;
+    case DSV_SAVE:
+        rc = ProcessSave( argc, argv );
         break;
     default:
         break;

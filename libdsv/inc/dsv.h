@@ -46,6 +46,11 @@ SOFTWARE.
 /*! maximum jason file size */
 #define DSV_JSON_FILE_SIZE_MAX      (2 * 1024 * 1024)
 
+/*! dsv flags */
+#define DSV_FLAG_SAVE               (1)
+
+#define DSV_FLAG_TRACK              (1 << 1)
+
 typedef enum dsv_type
 {
     DSV_TYPE_INVALID = 0,
@@ -140,8 +145,14 @@ typedef struct dsv_info
     /*! timestamp - time of last successful update/write */
     struct timespec timestamp;
 
-    /*! dsv flags, like trackable, ... */
+    /*! dsv flags, like save, track, hide... */
     uint32_t flags;
+
+    /*! consider using bit fileds to indicate it */
+    struct
+    {
+        unsigned int dirty : 1;
+    };
 
     /*! dsv type */
     int type;
@@ -218,8 +229,10 @@ int DSV_GetNotification( void *ctx,
                          void **hndl,
                          char *name,
                          size_t nlen,
-                         char *value,
+                         void *value,
                          size_t vlen );
+/* persist changed dsvs */
+int DSV_Save( void *ctx );
 
 /* int array dsv operations */
 int DSV_InsItemToArray( void *ctx, void *hndl, int index, int value );
@@ -252,6 +265,7 @@ int DSV_Array2Str( char *buf, size_t len, const dsv_info_t *pDsv );
 int DSV_Value2Str( char *buf, size_t len, const dsv_info_t *pDsv );
 int DSV_Double2Value( double df, dsv_info_t *pDsv );
 dsv_type_t DSV_GetTypeFromStr( const char *type_str );
+uint32_t DSV_GetFlagsFromStr( const char *flags_str );
 int DSV_GetSizeFromType( int type );
 void DSV_Print( const dsv_info_t *pDsv );
 

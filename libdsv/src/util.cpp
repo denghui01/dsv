@@ -517,6 +517,39 @@ dsv_type_t DSV_GetTypeFromStr( const char *type_str )
 
 /*!=============================================================================
 
+    Get the flag bitmap from a flags string, eg, save, track, ...
+
+@param[in]
+    flags_str
+        string of the flags, eg, "save,track"
+
+@return
+    bitmap of flags - success
+    -1 - failed
+
+==============================================================================*/
+uint32_t DSV_GetFlagsFromStr( const char *flags_str )
+{
+    assert( flags_str );
+
+    uint32_t flags = 0;
+
+    if( strstr( flags_str, "save" ) != NULL )
+    {
+        flags |= DSV_FLAG_SAVE;
+    }
+
+    if( strstr( flags_str, "track" ) != NULL )
+    {
+        flags |= DSV_FLAG_TRACK;
+    }
+
+    return flags;
+}
+
+
+/*!=============================================================================
+
     Get the number of bytes from type enum. Currently we don't need this length.
     In the future we need this to support blob type
 
@@ -586,6 +619,7 @@ void DSV_Print( const dsv_info_t *pDsv )
     printf( "instID:\t%d\n", pDsv->instID );
     printf( "type:  \t%d\n", pDsv->type );
     printf( "ts:    \t%ld\n", pDsv->timestamp.tv_sec );
+    printf( "dirty: \t%d\n", pDsv->dirty );
     char vstr[DSV_STRING_SIZE_MAX];
     DSV_Value2Str( vstr, DSV_STRING_SIZE_MAX, pDsv );
     printf( "value: \t%s\n", vstr );
