@@ -146,6 +146,9 @@ typedef struct dsv_info
     /*! timestamp - time of last successful update/write */
     struct timespec timestamp;
 
+    /*! pid - pid of process with last successful update/write */
+    pid_t pid;
+
     /*! dsv flags, like save, track, hide... */
     uint32_t flags;
 

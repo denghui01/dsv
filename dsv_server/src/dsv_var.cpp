@@ -54,6 +54,48 @@ using dsv_array_t = std::vector< int >;
 
 /*!=============================================================================
 
+    This function get the process name from given pid. The caller needs to free
+    the memory allocated for the process name returned
+
+@param[in]
+    pid
+        process id
+@return
+    process name string buffer: null terminated string
+    NULL - cannot find the active process in this machine
+
+==============================================================================*/
+char *get_proc_name( pid_t pid )
+{
+    char cmd[1024];
+    snprintf( cmd, 1024, "ps -p %d -o comm=", pid );
+
+    FILE *fp;
+    char *pname = (char *)calloc( DSV_STRING_SIZE_MAX, 1 );
+
+    if ((fp = popen(cmd, "r")) == NULL)
+    {
+        printf("Error opening pipe!\n");
+        return NULL;
+    }
+
+    if( fgets( pname, DSV_STRING_SIZE_MAX, fp ) == NULL )
+    {
+        printf("Error reading ps output!\n");
+        return NULL;
+    }
+
+    if (pclose(fp))
+    {
+        printf("Command not found or exited with error status\n");
+        return NULL;
+    }
+
+    return pname;
+}
+
+/*!=============================================================================
+
     This function fills the forward buffer with the information in
     dsv_info_t structure.
 
@@ -182,6 +224,8 @@ int var_set( const char *req_buf, char *fwd_buf )
 
     dsv_info_t *dsv = *(dsv_info_t **)req_data;
     req_data += sizeof(dsv);
+    dsv->pid = *(pid_t *)req_data;
+    req_data += sizeof(pid_t);
     if( dsv != NULL )
     {
         clock_gettime( CLOCK_REALTIME, &now );
@@ -207,8 +251,12 @@ int var_set( const char *req_buf, char *fwd_buf )
         if( dsv->flags & DSV_FLAG_TRACK )
         {
             char buf[DSV_STRING_SIZE_MAX];
+            char *proc_name = get_proc_name( dsv->pid );
             DSV_Value2Str( buf, DSV_STRING_SIZE_MAX, dsv );
-            dsvlog( LOG_NOTICE, "%s is changed to %s", dsv->pName, buf );
+            dsvlog( LOG_NOTICE,
+                    "%s is changed to %s by %s",
+                    dsv->pName, buf, proc_name );
+            free( proc_name );
         }
 
 
@@ -232,6 +280,8 @@ int var_add_item( const char *req_buf, char *fwd_buf )
 
     dsv_info_t *dsv = *(dsv_info_t **)req_data;
     req_data += sizeof(dsv);
+    dsv->pid = *(pid_t *)req_data;
+    req_data += sizeof(pid_t);
     int value = *(int *)req_data;
     if( dsv != NULL && dsv->type == DSV_TYPE_INT_ARRAY )
     {
@@ -269,6 +319,8 @@ int var_set_item( const char *req_buf, char *fwd_buf )
 
     dsv_info_t *dsv = *(dsv_info_t **)req_data;
     req_data += sizeof(dsv);
+    dsv->pid = *(pid_t *)req_data;
+    req_data += sizeof(pid_t);
     int index = *(int *)req_data;
     req_data += sizeof(index);
     int value = *(int *)req_data;
@@ -307,6 +359,8 @@ int var_ins_item( const char *req_buf, char *fwd_buf )
 
     dsv_info_t *dsv = *(dsv_info_t **)req_data;
     req_data += sizeof(dsv);
+    dsv->pid = *(pid_t *)req_data;
+    req_data += sizeof(pid_t);
     int index = *(int *)req_data;
     req_data += sizeof(index);
     int value = *(int *)req_data;
@@ -347,6 +401,8 @@ int var_del_item( const char *req_buf, char *fwd_buf )
 
     dsv_info_t *dsv = *(dsv_info_t **)req_data;
     req_data += sizeof(dsv);
+    dsv->pid = *(pid_t *)req_data;
+    req_data += sizeof(pid_t);
     int index = *(int *)req_data;
     if( dsv != NULL && dsv->type == DSV_TYPE_INT_ARRAY )
     {

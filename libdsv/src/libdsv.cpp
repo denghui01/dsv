@@ -628,6 +628,8 @@ int DSV_Create( void *ctx, uint32_t instID, dsv_info_t *pDsv )
     char *req_data = req->data;
     int len = 0;
 
+    pDsv->pid = getpid();
+
     req->type = DSV_MSG_CREATE;
     req->length = sizeof(dsv_msg_request_t);
 
@@ -959,7 +961,12 @@ int DSV_Set( void *ctx, void *hndl, char *value )
     char *req_data = req->data;
 
     rc = fill_req_buf( req_buf, DSV_MSG_SET, hndl );
+
     req_data += rc;
+    *(pid_t *)req_data = getpid();
+    req->length += sizeof(pid_t);
+
+    req_data += sizeof(pid_t);
     strncpy( req_data, value, DSV_STRING_SIZE_MAX );
     req->length += strlen( req_data ) + 1;
 
@@ -988,7 +995,12 @@ int DSV_Set( void *ctx, void *hndl, void *data, size_t size )
     char *req_data = req->data;
 
     rc = fill_req_buf( req_buf, DSV_MSG_SET, hndl );
+
     req_data += rc;
+    *(pid_t *)req_data = getpid();
+    req->length += sizeof(pid_t);
+
+    req_data += sizeof(pid_t);
     memcpy( req_data, data, size );
     req->length += size;
 
@@ -1017,7 +1029,12 @@ int DSV_Set( void *ctx, void *hndl, T value )
     char *req_data = req->data;
 
     rc = fill_req_buf( req_buf, DSV_MSG_SET, hndl );
+
     req_data += rc;
+    *(pid_t *)req_data = getpid();
+    req->length += sizeof(pid_t);
+
+    req_data += sizeof(pid_t);
     memcpy( req_data, &value, sizeof(value) );
     req->length += sizeof(value);
 
@@ -1489,8 +1506,12 @@ int DSV_AddItemToArray( void *ctx, void *hndl, int value )
     char *req_data = req->data;
 
     rc = fill_req_buf( req_buf, DSV_MSG_ADD_ITEM, hndl );
-    req_data += rc;
 
+    req_data += rc;
+    *(pid_t *)req_data = getpid();
+    req->length += sizeof(pid_t);
+
+    req_data += sizeof(pid_t);
     *(int *)req_data = value;
     req->length += sizeof(value);
 
@@ -1515,8 +1536,12 @@ int DSV_InsItemToArray( void *ctx, void *hndl, int index, int value )
     char *req_data = req->data;
 
     rc = fill_req_buf( req_buf, DSV_MSG_INS_ITEM, hndl );
-    req_data += rc;
 
+    req_data += rc;
+    *(pid_t *)req_data = getpid();
+    req->length += sizeof(pid_t);
+
+    req_data += sizeof(pid_t);
     *(int *)req_data = index;
     req->length += sizeof(index);
     req_data += sizeof(index);
@@ -1546,7 +1571,10 @@ int DSV_DelItemFromArray( void *ctx, void *hndl, int index )
 
     rc = fill_req_buf( req_buf, DSV_MSG_DEL_ITEM, hndl );
     req_data += rc;
+    *(pid_t *)req_data = getpid();
+    req->length += sizeof(pid_t);
 
+    req_data += sizeof(pid_t);
     *(int *)req_data = index;
     req->length += sizeof(index);
 
@@ -1572,7 +1600,10 @@ int DSV_SetItemInArray( void *ctx, void *hndl, int index, int value )
 
     rc = fill_req_buf( req_buf, DSV_MSG_SET_ITEM, hndl );
     req_data += rc;
+    *(pid_t *)req_data = getpid();
+    req->length += sizeof(pid_t);
 
+    req_data += sizeof(pid_t);
     *(int *)req_data = index;
     req->length += sizeof(index);
     req_data += sizeof(index);
