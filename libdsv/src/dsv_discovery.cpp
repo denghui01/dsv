@@ -46,7 +46,7 @@ SOFTWARE.
     0 - No dsv server found,
     1 - found a dsv server running
 ==============================================================================*/
-int DSV_DiscoverServer( char *server_ip, size_t size )
+int DSV_FindDiscoveryServer( char *server_ip, size_t size )
 {
     int rc = 0;
     zactor_t *listener = zactor_new( zbeacon, NULL );
@@ -90,9 +90,9 @@ int DSV_DiscoverServer( char *server_ip, size_t size )
     Broadcast message using zbeacon
 
 @return
-    0 for success, non-zero for failure
+    speaker for success, null for failure
 ==============================================================================*/
-void* DSV_RunServer()
+void* DSV_RunDiscoveryServer()
 {
     printf( "!!!Start to run server\n" );
     zactor_t *speaker = zactor_new( zbeacon, NULL );

@@ -37,20 +37,28 @@ SOFTWARE.
 #include "dsv_log.h"
 
 /* this name is a well-known dsv name */
-#define DSV_DEVLIST     "[0]/SYS/DEV/LIST"
+#define DSV_DEVLIST         "[0]/SYS/DEV_LIST"
+
+/*! devman module log level dsv */
+#define DSV_DEV_LOG_LEVEL   "/DEV/CFG/LOG_LEVEL"
+
+/*! system dsvs */
+#define DSV_SYS_DSVS_FILE   "sys_dsvs.json"
+
+/*! default system instant ID */
+#define DSV_DEFAULT_INSTID  0
 
 static struct state
 {
     void *dsv_ctx;
     char *json_file;
     uint32_t instID;
-    dsv_info_t dsv;
     int log_level;
     void *hndl_log_level;
     void *hndl_devlist;
 }g_state;
 
-static void handle_notifications()
+static void ProcessNotifications()
 {
     char full_name[DSV_STRING_SIZE_MAX];
     char value[DSV_STRING_SIZE_MAX];
@@ -69,8 +77,8 @@ static void handle_notifications()
             if( hndl == g_state.hndl_log_level )
             {
                 /* handle logmask updates */
-                g_state.log_level = *(uint32_t*)value;
-                DSV_SetLogmask(LOG_UPTO( g_state.log_level));
+                g_state.log_level = *(uint32_t *)value;
+                DSV_SetLogmask( LOG_UPTO( g_state.log_level ) );
                 printf( "%s=%d\n", full_name, g_state.log_level );
 
             }
@@ -78,14 +86,14 @@ static void handle_notifications()
             {
                 /* handle devlist changes, here we simply print it */
                 char buffer[DSV_STRING_SIZE_MAX];
-                DSV_PrintArray( value, buffer, DSV_STRING_SIZE_MAX);
+                DSV_PrintArray( value, buffer, DSV_STRING_SIZE_MAX );
                 printf( "%s=%s\n", full_name, buffer );
             }
         }
     }
 }
 
-static void update_devlist()
+static void InitDevlist()
 {
     int rc = EINVAL;
     g_state.hndl_devlist = DSV_Handle( g_state.dsv_ctx, DSV_DEVLIST );
@@ -93,12 +101,12 @@ static void update_devlist()
     {
         /* create devlist dsv if it hasn't been created */
         dsv_info_t dsv;
-        int array[] = {0};
-        dsv.pName = strdup(DSV_DEVLIST);
+        int array[] = { DSV_DEFAULT_INSTID };
+        dsv.pName = strdup( DSV_DEVLIST );
         dsv.type = DSV_TYPE_INT_ARRAY;
         dsv.value.pArray = array;
         dsv.len = sizeof(int);
-        dsv.instID = 0;
+        dsv.instID = DSV_DEFAULT_INSTID;
         rc = DSV_Create( g_state.dsv_ctx, dsv.instID, &dsv );
         free( dsv.pName );
         if( rc != 0 )
@@ -107,26 +115,49 @@ static void update_devlist()
             return;
         }
         g_state.hndl_devlist = DSV_Handle( g_state.dsv_ctx, DSV_DEVLIST );
+
+        /* create system DSVs */
+        DSV_CreateWithJson( g_state.dsv_ctx,
+                            dsv.instID,
+                            DSV_SYS_DSVS_FILE );
+
     }
 
     if( g_state.hndl_devlist != NULL )
     {
         DSV_SubByName( g_state.dsv_ctx, DSV_DEVLIST );
+
+        if( g_state.instID == 0 )
+        {
+            g_state.instID = DSV_GetInstID( NULL ) & 0x000FFFF;
+        }
         DSV_AddItemToArray( g_state.dsv_ctx,
                             g_state.hndl_devlist,
                             g_state.instID );
     }
+
+    if( g_state.json_file )
+    {
+        /* create device specific DSVs, passed by command line parameter */
+        DSV_CreateWithJson( g_state.dsv_ctx,
+                            g_state.instID,
+                            g_state.json_file );
+    }
+
 }
 
-static void update_logmask()
+static void InitLogmask()
 {
     /* set log mask based on the log level */
-    DSV_SetLogmask(LOG_UPTO( g_state.log_level));
+    DSV_SetLogmask( LOG_UPTO( g_state.log_level ) );
 
     /* Create log level dsv with default value  and subscribe it */
     char name_log_level[DSV_STRING_SIZE_MAX];
     g_state.instID = DSV_GetInstID( NULL ) & 0x000FFFF;
-    sprintf( name_log_level, "[%d]/SYS/DEV/LOG_LEVEL", g_state.instID );
+    sprintf( name_log_level,
+             "[%d]%s",
+             g_state.instID,
+             DSV_DEV_LOG_LEVEL );
     DSV_LogInit( g_state.dsv_ctx, name_log_level );
 
     /* set the log level dsv with current real value */
@@ -168,12 +199,16 @@ int main( int argc, char **argv )
     g_state.log_level = LOG_WARNING;
 
     /* parse the command line options */
-    while( (c = getopt( argc, argv, "v" )) != -1 )
+    while( (c = getopt( argc, argv, "vf:" )) != -1 )
     {
         switch( c )
         {
         case 'v':
             ++g_state.log_level;
+            break;
+
+        case 'f':
+            g_state.json_file = optarg;
             break;
 
         default:
@@ -187,11 +222,9 @@ int main( int argc, char **argv )
         exit( EXIT_FAILURE );
     }
 
-    update_logmask();
-
-    update_devlist();
-
-    handle_notifications();
+    InitLogmask();
+    InitDevlist();
+    ProcessNotifications();
 
     exit( 1 );
 }

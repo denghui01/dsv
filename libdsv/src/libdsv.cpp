@@ -122,7 +122,8 @@ static int dsv_SendMsg( void *ctx,
              req->type == DSV_MSG_GET_LEN ||
              req->type == DSV_MSG_GET ||
              req->type == DSV_MSG_GET_NEXT ||
-             req->type == DSV_MSG_GET_ITEM)
+             req->type == DSV_MSG_GET_ITEM ||
+             req->type == DSV_MSG_TRACK )
     {
         if( req_buf != NULL )
         {
@@ -402,10 +403,10 @@ static int dsv_ParseJsonStr( void *ctx, uint32_t instID, const char *buf )
     -1 - failed
 
 ==============================================================================*/
-static int fill_req_buf(char *req_buf, int type, const void *hndl)
+static int fill_req_buf( char *req_buf, int type, const void *hndl )
 {
-    assert(req_buf);
-    assert(hndl);
+    assert( req_buf );
+    assert( hndl );
 
     dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
     char *req_data = req->data;
@@ -431,18 +432,18 @@ void* DSV_Open( void )
 {
     dsv_context_t *ctx = NULL;
     int rc;
-    char server_ip[64] = {0};
+    char server_ip[64] = { 0 };
     char reply_url[DSV_STRING_SIZE_MAX];
     char frontend_url[DSV_STRING_SIZE_MAX];
     char backend_url[DSV_STRING_SIZE_MAX];
 
-    if( !DSV_DiscoverServer( server_ip, 64 ) )
+    if( !DSV_FindDiscoveryServer( server_ip, 64 ) )
     {
         dsvlog( LOG_ERR, "Error: No DSV server found!" );
         return NULL;
     }
 
-    assert(server_ip[0]);
+    assert( server_ip[0] );
     snprintf( frontend_url, DSV_STRING_SIZE_MAX, "tcp://%s:56789", server_ip );
     snprintf( backend_url, DSV_STRING_SIZE_MAX, "tcp://%s:56788", server_ip );
     snprintf( reply_url, DSV_STRING_SIZE_MAX, "tcp://%s:56787", server_ip );
@@ -750,7 +751,7 @@ int DSV_Type( void *ctx, void *hndl )
     dsv_msg_reply_t *rep = (dsv_msg_reply_t *)rep_buf;
     char *rep_data = rep->data;
 
-    fill_req_buf(req_buf, DSV_MSG_GET_TYPE, hndl);
+    fill_req_buf( req_buf, DSV_MSG_GET_TYPE, hndl );
 
     rc = dsv_SendMsg( ctx, req_buf, req->length, rep_buf, sizeof(rep_buf) );
     if( rc != 0 )
@@ -793,7 +794,7 @@ size_t DSV_Len( void *ctx, void *hndl )
     dsv_msg_reply_t *rep = (dsv_msg_reply_t *)rep_buf;
     char *rep_data = rep->data;
 
-    fill_req_buf(req_buf, DSV_MSG_GET_LEN, hndl);
+    fill_req_buf( req_buf, DSV_MSG_GET_LEN, hndl );
 
     rc = dsv_SendMsg( ctx, req_buf, req->length, rep_buf, sizeof(rep_buf) );
     if( rc != 0 )
@@ -888,7 +889,7 @@ int DSV_SetThruStr( void *ctx, void *hndl, const char *value )
         rc = DSV_Set( ctx, hndl, value );
         break;
     case DSV_TYPE_INT_ARRAY:
-        rc = DSV_Str2Array(value, &data, &size);
+        rc = DSV_Str2Array( value, &data, &size );
         if( rc == 0 )
         {
             rc = DSV_Set( ctx, hndl, data, size );
@@ -957,7 +958,7 @@ int DSV_Set( void *ctx, void *hndl, char *value )
     dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
     char *req_data = req->data;
 
-    rc = fill_req_buf(req_buf, DSV_MSG_SET, hndl);
+    rc = fill_req_buf( req_buf, DSV_MSG_SET, hndl );
     req_data += rc;
     strncpy( req_data, value, DSV_STRING_SIZE_MAX );
     req->length += strlen( req_data ) + 1;
@@ -986,7 +987,7 @@ int DSV_Set( void *ctx, void *hndl, void *data, size_t size )
     dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
     char *req_data = req->data;
 
-    rc = fill_req_buf(req_buf, DSV_MSG_SET, hndl);
+    rc = fill_req_buf( req_buf, DSV_MSG_SET, hndl );
     req_data += rc;
     memcpy( req_data, data, size );
     req->length += size;
@@ -1015,7 +1016,7 @@ int DSV_Set( void *ctx, void *hndl, T value )
     dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
     char *req_data = req->data;
 
-    rc = fill_req_buf(req_buf, DSV_MSG_SET, hndl);
+    rc = fill_req_buf( req_buf, DSV_MSG_SET, hndl );
     req_data += rc;
     memcpy( req_data, &value, sizeof(value) );
     req->length += sizeof(value);
@@ -1150,7 +1151,9 @@ int DSV_GetByNameFuzzy( void *ctx,
     {
         if( rc != ENOENT )
         {
-            dsvlog( LOG_ERR, "Failed to send message to the server: %s", search_name );
+            dsvlog( LOG_ERR,
+                    "Failed to send message to the server: %s",
+                    search_name );
         }
         rc = -1;
     }
@@ -1165,6 +1168,54 @@ int DSV_GetByNameFuzzy( void *ctx,
     return rc;
 }
 
+int DSV_TrackByNameFuzzy( void *ctx,
+                          const char *search_name,
+                          int last_index,
+                          int enable )
+{
+    assert( ctx );
+    assert( search_name );
+
+    int rc = EINVAL;
+    char req_buf[BUFSIZE];
+    dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
+    char *req_data = req->data;
+
+    char rep_buf[BUFSIZE];
+    dsv_msg_reply_t *rep = (dsv_msg_reply_t *)rep_buf;
+    char *rep_data = rep->data;
+
+    req->type = DSV_MSG_TRACK;
+    req->length = sizeof(dsv_msg_request_t);
+
+    *(int *)req_data = last_index;
+    req->length += sizeof(int);
+
+    req_data += sizeof(int);
+    strcpy( req_data, search_name );
+    req->length += strlen( search_name ) + 1;
+
+    req_data += strlen( search_name ) + 1;
+    *(int *)req_data = enable;
+    req->length += sizeof(int);
+
+    rc = dsv_SendMsg( ctx, req_buf, req->length, rep_buf, sizeof(rep_buf) );
+    if( rc != 0 )
+    {
+        if( rc != ENOENT )
+        {
+            dsvlog( LOG_ERR,
+                    "Failed to send message to the server: %s",
+                    search_name );
+        }
+        rc = -1;
+    }
+    else
+    {
+        rc = *(int *)rep_data;
+    }
+    return rc;
+}
 /*!=============================================================================
 
     This function requests dsv server to query dsv with value in string form.
@@ -1295,7 +1346,7 @@ int DSV_Get( void *ctx, void *hndl, char *value, size_t size )
     dsv_msg_reply_t *rep = (dsv_msg_reply_t *)rep_buf;
     char *rep_data = rep->data;
 
-    fill_req_buf(req_buf, DSV_MSG_GET, hndl);
+    fill_req_buf( req_buf, DSV_MSG_GET, hndl );
 
     rc = dsv_SendMsg( ctx, req_buf, req->length, rep_buf, sizeof(rep_buf) );
     if( rc != 0 )
@@ -1325,7 +1376,7 @@ int DSV_Get( void *ctx, void *hndl, void *value, size_t size )
     dsv_msg_reply_t *rep = (dsv_msg_reply_t *)rep_buf;
     char *rep_data = rep->data;
 
-    fill_req_buf(req_buf, DSV_MSG_GET, hndl);
+    fill_req_buf( req_buf, DSV_MSG_GET, hndl );
 
     rc = dsv_SendMsg( ctx, req_buf, req->length, rep_buf, sizeof(rep_buf) );
     if( rc != 0 )
@@ -1365,7 +1416,7 @@ int DSV_Get( void *ctx, void *hndl, T *value )
     dsv_msg_reply_t *rep = (dsv_msg_reply_t *)rep_buf;
     char *rep_data = rep->data;
 
-    fill_req_buf(req_buf, DSV_MSG_GET, hndl);
+    fill_req_buf( req_buf, DSV_MSG_GET, hndl );
 
     rc = dsv_SendMsg( ctx, req_buf, req->length, rep_buf, sizeof(rep_buf) );
     if( rc != 0 )
@@ -1416,7 +1467,7 @@ int DSV_GetNotification( void *ctx,
     if( rc == 0 )
     {
         strncpy( name, data, nlen );
-        data += strlen(name) + 1;
+        data += strlen( name ) + 1;
 
         *hndl = *(void **)data;
         data += sizeof(hndl);
@@ -1429,15 +1480,15 @@ int DSV_GetNotification( void *ctx,
 
 int DSV_AddItemToArray( void *ctx, void *hndl, int value )
 {
-    assert(ctx);
-    assert(hndl);
+    assert( ctx );
+    assert( hndl );
 
     int rc = EINVAL;
     char req_buf[BUFSIZE];
     dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
     char *req_data = req->data;
 
-    rc = fill_req_buf(req_buf, DSV_MSG_ADD_ITEM, hndl);
+    rc = fill_req_buf( req_buf, DSV_MSG_ADD_ITEM, hndl );
     req_data += rc;
 
     *(int *)req_data = value;
@@ -1455,15 +1506,15 @@ int DSV_AddItemToArray( void *ctx, void *hndl, int value )
 
 int DSV_InsItemToArray( void *ctx, void *hndl, int index, int value )
 {
-    assert(ctx);
-    assert(hndl);
+    assert( ctx );
+    assert( hndl );
 
     int rc = EINVAL;
     char req_buf[BUFSIZE];
     dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
     char *req_data = req->data;
 
-    rc = fill_req_buf(req_buf, DSV_MSG_INS_ITEM, hndl);
+    rc = fill_req_buf( req_buf, DSV_MSG_INS_ITEM, hndl );
     req_data += rc;
 
     *(int *)req_data = index;
@@ -1485,15 +1536,15 @@ int DSV_InsItemToArray( void *ctx, void *hndl, int index, int value )
 
 int DSV_DelItemFromArray( void *ctx, void *hndl, int index )
 {
-    assert(ctx);
-    assert(hndl);
+    assert( ctx );
+    assert( hndl );
 
     int rc = EINVAL;
     char req_buf[BUFSIZE];
     dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
     char *req_data = req->data;
 
-    rc = fill_req_buf(req_buf, DSV_MSG_DEL_ITEM, hndl);
+    rc = fill_req_buf( req_buf, DSV_MSG_DEL_ITEM, hndl );
     req_data += rc;
 
     *(int *)req_data = index;
@@ -1511,15 +1562,15 @@ int DSV_DelItemFromArray( void *ctx, void *hndl, int index )
 
 int DSV_SetItemInArray( void *ctx, void *hndl, int index, int value )
 {
-    assert(ctx);
-    assert(hndl);
+    assert( ctx );
+    assert( hndl );
 
     int rc = EINVAL;
     char req_buf[BUFSIZE];
     dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
     char *req_data = req->data;
 
-    rc = fill_req_buf(req_buf, DSV_MSG_SET_ITEM, hndl);
+    rc = fill_req_buf( req_buf, DSV_MSG_SET_ITEM, hndl );
     req_data += rc;
 
     *(int *)req_data = index;
@@ -1541,8 +1592,8 @@ int DSV_SetItemInArray( void *ctx, void *hndl, int index, int value )
 
 int DSV_GetItemFromArray( void *ctx, void *hndl, int index, int *value )
 {
-    assert(ctx);
-    assert(hndl);
+    assert( ctx );
+    assert( hndl );
 
     int rc = EINVAL;
     char req_buf[BUFSIZE];
@@ -1553,7 +1604,7 @@ int DSV_GetItemFromArray( void *ctx, void *hndl, int index, int *value )
     dsv_msg_reply_t *rep = (dsv_msg_reply_t *)rep_buf;
     char *rep_data = rep->data;
 
-    rc = fill_req_buf(req_buf, DSV_MSG_GET_ITEM, hndl);
+    rc = fill_req_buf( req_buf, DSV_MSG_GET_ITEM, hndl );
     req_data += rc;
 
     *(int *)req_data = index;
@@ -1571,7 +1622,7 @@ int DSV_GetItemFromArray( void *ctx, void *hndl, int index, int *value )
 
 int DSV_Save( void *ctx )
 {
-    assert(ctx);
+    assert( ctx );
 
     int rc = EINVAL;
     char req_buf[BUFSIZE];
@@ -1592,7 +1643,7 @@ int DSV_Save( void *ctx )
 
 int DSV_Restore( void *ctx )
 {
-    assert(ctx);
+    assert( ctx );
 
     int rc = EINVAL;
     char req_buf[BUFSIZE];

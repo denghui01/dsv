@@ -45,9 +45,6 @@ SOFTWARE.
                               Defines
 ==============================================================================*/
 
-/*! Server name used in ZMQ endpoint */
-#define DSV_SERVER_NAME         "DSV"
-
 /*! zmq endpoint for tcp to cross node */
 #define DSV_FRONTEND            ( "tcp://*:56789" )
 #define DSV_BACKEND             ( "tcp://*:56788" )
@@ -187,6 +184,11 @@ static int dsv_handle_reply()
 
     case DSV_MSG_GET_ITEM:
         rc = var_get_item( req_buf, rep_buf );
+        rep->result = rc;
+        break;
+
+    case DSV_MSG_TRACK:
+        rc = var_track( req_buf, rep_buf );
         rep->result = rc;
         break;
 
@@ -533,6 +535,34 @@ static int dsv_setup_reply()
 
 /*!=============================================================================
 
+    Initialize discovery server for dsv server
+
+@return
+    0 for success, non-zero for failure
+==============================================================================*/
+static int dsv_server_init_discovery()
+{
+    /**
+     *  Try to discover the existing dsv server on the network.
+     *  If there is one, don't run the server.
+     */
+    if( DSV_FindDiscoveryServer( NULL, 0 ) )
+    {
+        return -1;
+    }
+
+    /*! run discovery server if there is not */
+    g_state.speaker = DSV_RunDiscoveryServer();
+    if( g_state.speaker == NULL )
+    {
+        return -1;
+    }
+
+    return 0;
+}
+
+/*!=============================================================================
+
     Initialize zmq for dsv server
 
 @return
@@ -546,18 +576,6 @@ static int dsv_server_init_zmq()
 
     /* create a self-pipe to get the exit signal */
     s_create_pipe();
-
-    /**
-     *  Try to discover the existing dsv server on the network.
-     *  If there is one, don't run the server.
-     */
-    if( DSV_DiscoverServer( NULL, 0 ) )
-    {
-        return -1;
-    }
-
-    /*! run discoery server if there is not */
-    g_state.speaker = DSV_RunServer();
 
     /* Create zmq context */
     g_state.zmq_ctx = zmq_ctx_new();
@@ -613,7 +631,11 @@ static int dsv_server_init_zmq()
 ==============================================================================*/
 static int dsv_server_init()
 {
-    return dsv_server_init_zmq();
+    int rc = 0;
+    rc = dsv_server_init_discovery();
+
+    rc += dsv_server_init_zmq();
+    return rc;
 }
 
 /*!=============================================================================

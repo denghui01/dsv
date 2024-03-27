@@ -51,6 +51,7 @@ SOFTWARE.
 
 #define DSV_FLAG_TRACK              (1 << 1)
 
+
 typedef enum dsv_type
 {
     DSV_TYPE_INVALID = 0,
@@ -256,6 +257,10 @@ int DSV_GetByNameFuzzy( void *ctx,
                         size_t namesz,
                         char *value,
                         size_t valuesz );
+int DSV_TrackByNameFuzzy( void *ctx,
+                          const char *search_name,
+                          int last_index,
+                          int enable );
 
 /* dsv utilities */
 void strtoupper(char *str);
@@ -273,8 +278,8 @@ int DSV_GetSizeFromType( int type );
 void DSV_Print( const dsv_info_t *pDsv );
 
 /* dsv discovery */
-int DSV_DiscoverServer( char *server_ip, size_t size );
-void *DSV_RunServer();
+int DSV_FindDiscoveryServer( char *server_ip, size_t size );
+void *DSV_RunDiscoveryServer();
 uint32_t DSV_GetInstID( const char *if_name );
 
 #if 0

@@ -37,6 +37,9 @@ SOFTWARE.
 
 /*! console log level, just like syslog mask */
 static uint32_t g_console_logmask = ~0;
+
+/*! if process is sunning in foreground, dsvlog output to stdout, 
+  otherwise to syslog */
 static bool g_run_in_foreground = true;
 /* TODO: use hndl to check the notification */
 void *g_hndl_logmask;
@@ -72,7 +75,7 @@ void *g_hndl_logmask;
 
     LOG_DEBUG   debug-level message
 ==============================================================================*/
-void dsvlog( int priority, const char* format, ... )
+void dsvlog( int priority, const char *format, ... )
 {
     va_list args;
     va_start( args, format );
@@ -83,7 +86,7 @@ void dsvlog( int priority, const char* format, ... )
         if( priority & g_console_logmask )
         {
             vprintf( format, args );
-            printf("\n");
+            printf( "\n" );
         }
     }
     else
@@ -102,19 +105,19 @@ void dsvlog( int priority, const char* format, ... )
     log_level
         the name of log_level dsv , like "[0]/SYS/DEV/LOG_LEVEL".
 ==============================================================================*/
-void DSV_LogInit(void *ctx, const char *log_level)
+void DSV_LogInit( void *ctx, const char *log_level )
 {
     int rc = 0;
     /* determine the process is running background or not */
-    g_run_in_foreground = (getpgrp() == tcgetpgrp(STDOUT_FILENO));
+    g_run_in_foreground = (getpgrp() == tcgetpgrp( STDOUT_FILENO ));
 
-    if( ctx != NULL && log_level != NULL)
+    if( ctx != NULL && log_level != NULL )
     {
         /* create console log mask dsv */
         dsv_info_t dsv;
         char name[DSV_STRING_SIZE_MAX];
-        sscanf(log_level, "[%d]", &dsv.instID);
-        dsv.pName = strdup(log_level);
+        sscanf( log_level, "[%d]", &dsv.instID );
+        dsv.pName = strdup( log_level );
         dsv.type = DSV_TYPE_UINT32;
         dsv.len = DSV_GetSizeFromType( dsv.type );
         dsv.value.u32 = LOG_WARNING;

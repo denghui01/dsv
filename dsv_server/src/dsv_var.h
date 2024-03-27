@@ -36,6 +36,7 @@ int var_get_next( const char *req_buf, char *rep_buf );
 int var_notify( char *sub_buf, char *fwd_buf );
 int var_save();
 int var_restore();
+int var_track( const char *req_buf, const char *rep_buf );
 
 int var_get_item( const char *req_buf, char *rep_buf );
 int var_set_item( const char *req_buf, char *fwd_buf );

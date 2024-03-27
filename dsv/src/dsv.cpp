@@ -49,10 +49,11 @@ typedef enum dsv_operation
     DSV_GET,
     DSV_SUB,
     DSV_SAVE,
-    DSV_RESTORE
+    DSV_RESTORE,
+    DSV_TRACK
 }dsv_op_t;
 
-using dsv_array_t = std::vector<int>;
+using dsv_array_t = std::vector< int >;
 
 static struct state
 {
@@ -139,6 +140,8 @@ static void usage( void )
              "    -g/get/read - get a dsv value\n"
              "    -u/sub/subscribe - subscribe a dsv\n"
              "    save - persist all sysvars that need to save\n"
+             "    restore - restore all sysvars from non-volatile memory\n"
+             "    track - track the change of particular dsvs\n"
              "    -f <file-name> - create a batch of DSVs from a JSON file\n"
              "    -i <instance ID> - create a DSV with instance ID\n"
              "    -y <type> - create a DSV with type\n"
@@ -152,6 +155,9 @@ static void usage( void )
              "   sv set [0]/SYS/STS/NAME \"wifi router\"\n"
              "   sv get [123]/SYS/STS/DEVICE_NAME\n"
              "   sv sub [123]/SYS/STS/DEVICE_NAME\n"
+             "   sv save\n"
+             "   sv restore\n"
+             "   sv track enable /SYS/STS/DEVICE_NAME\n"
            );
 }
 
@@ -170,7 +176,7 @@ static int HandleNotification( void )
     if( rc == 0 )
     {
         dsv_info_t dsv;
-        dsv.type = DSV_Type( g_state.dsv_ctx, hndl);
+        dsv.type = DSV_Type( g_state.dsv_ctx, hndl );
         if( dsv.type == DSV_TYPE_STR )
         {
             printf( "%s=%s\n", full_name, value );
@@ -178,7 +184,7 @@ static int HandleNotification( void )
         else if( dsv.type == DSV_TYPE_INT_ARRAY )
         {
             char buffer[DSV_STRING_SIZE_MAX];
-            DSV_PrintArray( value, buffer, DSV_STRING_SIZE_MAX);
+            DSV_PrintArray( value, buffer, DSV_STRING_SIZE_MAX );
             printf( "%s=%s\n", full_name, buffer );
         }
         else
@@ -216,7 +222,7 @@ static int ProcessSub( int argc, char **argv )
     {
         /* the rest of parameters should be multiple names */
         strncpy( g_state.dsv_name, argv[optind], DSV_STRING_SIZE_MAX );
-        strtoupper(g_state.dsv_name);
+        strtoupper( g_state.dsv_name );
         rc = DSV_SubByName( g_state.dsv_ctx, g_state.dsv_name );
     }
 
@@ -272,6 +278,46 @@ static int ProcessRestore( int argc, char **argv )
 {
     return DSV_Restore( g_state.dsv_ctx );
 }
+
+static int ProcessTrack( int argc, char **argv )
+{
+    char enable_str[DSV_STRING_SIZE_MAX];
+    int enable_track;
+    int rc = EINVAL;
+
+    strncpy( enable_str, argv[optind++], DSV_STRING_SIZE_MAX );
+    if( strstr( enable_str, "enable" ) != NULL )
+    {   
+        enable_track = 1;
+    }
+    else if( strstr( enable_str, "disable" ) != NULL )
+    {   
+        enable_track = 0;
+    }
+    else
+    {
+        fprintf( stderr, "Wrong parameters\n" );
+        return rc;
+    }
+
+    for(; optind < argc; ++optind )
+    {
+        /* the rest of parameters should be multiple names */
+        strncpy( g_state.dsv_name, argv[optind], DSV_STRING_SIZE_MAX );
+        strtoupper( g_state.dsv_name );
+        int index = -1;
+        do
+        {
+            index = DSV_TrackByNameFuzzy( g_state.dsv_ctx,
+                                          g_state.dsv_name,
+                                          index,
+                                          enable_track );
+        } while( index != -1 );
+    }
+
+    return 0;
+
+}
 /*!=============================================================================
 
     Process dsv get/read command
@@ -291,7 +337,7 @@ static int ProcessRestore( int argc, char **argv )
 /*============================================================================*/
 static int ProcessGet( int argc, char **argv )
 {
-    int rc = EINVAL;
+    int rc = 0;
     char value[DSV_STRING_SIZE_MAX];
     char name[DSV_STRING_SIZE_MAX];
 
@@ -299,7 +345,7 @@ static int ProcessGet( int argc, char **argv )
     {
         /* the rest of parameters should be multiple names */
         strncpy( g_state.dsv_name, argv[optind], DSV_STRING_SIZE_MAX );
-        strtoupper(g_state.dsv_name);
+        strtoupper( g_state.dsv_name );
         int index = -1;
         do
         {
@@ -344,7 +390,7 @@ static int ProcessSet( int argc, char **argv )
     {
         /* the last two parameters should be dsv name and new value */
         strncpy( g_state.dsv_name, argv[optind++], DSV_STRING_SIZE_MAX );
-        strtoupper(g_state.dsv_name);
+        strtoupper( g_state.dsv_name );
         strncpy( g_state.dsv_val, argv[optind], DSV_STRING_SIZE_MAX );
         rc = DSV_SetByName( g_state.dsv_ctx, g_state.dsv_name, g_state.dsv_val );
     }
@@ -387,7 +433,7 @@ static int ProcessCreate( int argc, char **argv )
                       "[%d]%s",
                       g_state.instID,
                       argv[optind] );
-            strtoupper(g_state.dsv.pName);
+            strtoupper( g_state.dsv.pName );
             rc = DSV_Create( g_state.dsv_ctx,
                              g_state.instID,
                              &g_state.dsv );
@@ -520,6 +566,11 @@ static int ProcessOptions( int argc, char **argv )
                 g_state.operation = DSV_RESTORE;
                 optind++;
             }
+            else if( (strcmp( argv[optind], "track" ) == 0) )
+            {
+                g_state.operation = DSV_TRACK;
+                optind++;
+            }
             else
             {
                 fprintf( stderr, "Missing/Unspported operation type\n" );
@@ -575,7 +626,7 @@ int main( int argc, char *argv[] )
         exit( EXIT_FAILURE );
     }
 
-    DSV_LogInit(NULL, NULL);
+    DSV_LogInit( NULL, NULL );
 
 //  uint32_t instID = DSV_GetInstID("ens34") & 0x000FFFF;
 //  dsvlog(LOG_DEBUG, "instID=%u", instID);
@@ -600,8 +651,16 @@ int main( int argc, char *argv[] )
     case DSV_RESTORE:
         rc = ProcessRestore( argc, argv );
         break;
+    case DSV_TRACK:
+        rc = ProcessTrack( argc, argv );
+        break;
     default:
         break;
+    }
+
+    if( rc != 0 )
+    {
+        usage();
     }
 
     if( g_state.dsv.pName )

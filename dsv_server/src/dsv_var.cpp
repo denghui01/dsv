@@ -44,8 +44,8 @@ SOFTWARE.
 #include "dsv_log.h"
 
 /*! hasp table to hold the dsv name and dsv info data */
-std::unordered_map<std::string, void *> g_map;
-using dsv_array_t = std::vector<int>;
+std::unordered_map< std::string, void * > g_map;
+using dsv_array_t = std::vector< int >;
 
 #define DSV_SAVE_FILE       ("/var/run/dsv.save")
 /*==============================================================================
@@ -130,11 +130,11 @@ int var_create( const char *req_buf, char *fwd_buf )
         else if( dsv->type == DSV_TYPE_INT_ARRAY )
         {
             dsv->value.pArray = static_cast<void *>(
-                new dsv_array_t( (int *)req_data,
-                                 (int *)(req_data + dsv->len) ) );
+                                new dsv_array_t( (int *)req_data,
+                                                 (int *)( req_data + dsv->len ) ) );
         }
 
-        std::string full_name(dsv->pName);
+        std::string full_name( dsv->pName );
         auto e = g_map.find( full_name );
         if( e == g_map.end() )
         {
@@ -168,7 +168,7 @@ int var_create( const char *req_buf, char *fwd_buf )
 }
 
 /**
- */
+*/
 int var_set( const char *req_buf, char *fwd_buf )
 {
     assert( req_buf );
@@ -196,13 +196,21 @@ int var_set( const char *req_buf, char *fwd_buf )
         {
             delete (dsv_array_t *)dsv->value.pArray;
             dsv->value.pArray = static_cast<void *>
-                (new dsv_array_t( (int *)req_data,
-                                  (int *)(req_data + dsv->len) ) );
+                                ( new dsv_array_t( (int *)req_data,
+                                                   (int *)( req_data + dsv->len ) ) );
         }
         else
         {
             memcpy( &dsv->value, req_data, sizeof(dsv_value_t) );
         }
+
+        if( dsv->flags & DSV_FLAG_TRACK )
+        {
+            char buf[DSV_STRING_SIZE_MAX];
+            DSV_Value2Str( buf, DSV_STRING_SIZE_MAX, dsv );
+            dsvlog( LOG_NOTICE, "%s is changed to %s", dsv->pName, buf );
+        }
+
 
         fill_fwd_buf( dsv->pName, dsv, fwd_buf );
         rc = 0;
@@ -232,8 +240,16 @@ int var_add_item( const char *req_buf, char *fwd_buf )
         dsv->dirty = 1;
 
         dsv_array_t *ai =  (dsv_array_t *)dsv->value.pArray;
-        ai->push_back(value);
+        ai->push_back( value );
         dsv->len = ai->size() * sizeof(int);
+
+        if( dsv->flags & DSV_FLAG_TRACK )
+        {
+            char buf[DSV_STRING_SIZE_MAX];
+            DSV_Value2Str( buf, DSV_STRING_SIZE_MAX, dsv );
+            dsvlog( LOG_NOTICE, "%s is changed to %s", dsv->pName, buf );
+        }
+
         fill_fwd_buf( dsv->pName, dsv, fwd_buf );
         rc = 0;
     }
@@ -265,6 +281,13 @@ int var_set_item( const char *req_buf, char *fwd_buf )
         dsv_array_t *ai =  (dsv_array_t *)dsv->value.pArray;
         (*ai)[index] = value;
 
+        if( dsv->flags & DSV_FLAG_TRACK )
+        {
+            char buf[DSV_STRING_SIZE_MAX];
+            DSV_Value2Str( buf, DSV_STRING_SIZE_MAX, dsv );
+            dsvlog( LOG_NOTICE, "%s is changed to %s", dsv->pName, buf );
+        }
+
         fill_fwd_buf( dsv->pName, dsv, fwd_buf );
         rc = 0;
     }
@@ -295,8 +318,15 @@ int var_ins_item( const char *req_buf, char *fwd_buf )
 
         dsv_array_t *ai =  (dsv_array_t *)dsv->value.pArray;
         auto it = ai->begin();
-        ai->insert(std::next(it, index), value);
+        ai->insert( std::next( it, index ), value );
         dsv->len = ai->size() * sizeof(int);
+
+        if( dsv->flags & DSV_FLAG_TRACK )
+        {
+            char buf[DSV_STRING_SIZE_MAX];
+            DSV_Value2Str( buf, DSV_STRING_SIZE_MAX, dsv );
+            dsvlog( LOG_NOTICE, "%s is changed to %s", dsv->pName, buf );
+        }
 
         fill_fwd_buf( dsv->pName, dsv, fwd_buf );
         rc = 0;
@@ -326,8 +356,15 @@ int var_del_item( const char *req_buf, char *fwd_buf )
 
         dsv_array_t *ai = (dsv_array_t *)dsv->value.pArray;
         auto it = ai->begin();
-        ai->erase(std::next(it, index));
+        ai->erase( std::next( it, index ) );
         dsv->len = ai->size() * sizeof(int);
+
+        if( dsv->flags & DSV_FLAG_TRACK )
+        {
+            char buf[DSV_STRING_SIZE_MAX];
+            DSV_Value2Str( buf, DSV_STRING_SIZE_MAX, dsv );
+            dsvlog( LOG_NOTICE, "%s is changed to %s", dsv->pName, buf );
+        }
 
         fill_fwd_buf( dsv->pName, dsv, fwd_buf );
         rc = 0;
@@ -381,7 +418,7 @@ int var_get_handle( const char *req_buf, char *rep_buf )
     char *rep_data = rep->data;
     rep->length = sizeof(dsv_msg_reply_t);
 
-    std::string full_name(req_data);
+    std::string full_name( req_data );
     auto e = g_map.find( full_name );
     if( e != g_map.end() )
     {
@@ -486,7 +523,7 @@ int var_get_next( const char *req_buf, char *rep_buf )
     int last_index = *(int *)req_data;
     int index = -1;
     std::string search_name( req_data + sizeof( int ) );
-    for( auto [dsv_name, dsv_info] : g_map )
+    for( auto[dsv_name, dsv_info]: g_map )
     {
         if( dsv_name.find( search_name ) != -1 )
         {
@@ -542,9 +579,9 @@ int var_notify( char *sub_buf, char *fwd_buf )
 }
 
 /**
-*@return 
-* -1: fail 
-*/
+ * @return
+ * -1: fail
+ */
 int var_save()
 {
     int rc = -1;
@@ -554,17 +591,17 @@ int var_save()
     std::fstream s{ filename, s.binary | s.in | s.out | s.app };
     char value_buf[DSV_STRING_SIZE_MAX];
 
-    if (!s.is_open())
+    if( !s.is_open() )
     {
         printf( "Failed to open %s\n", filename.c_str() );
         return rc;
     }
 
     dsv_info_t *pDsv;
-    for( auto [dsv_name, dsv_info] : g_map )
+    for( auto[dsv_name, dsv_info]: g_map )
     {
         dsv_info_t *pDsv = (dsv_info_t *)dsv_info;
-        if( pDsv->dirty && ( pDsv->flags & DSV_FLAG_SAVE ) )
+        if( pDsv->dirty && (pDsv->flags & DSV_FLAG_SAVE) )
         {
             rc = DSV_Value2Str( value_buf,
                                 DSV_STRING_SIZE_MAX,
@@ -581,13 +618,14 @@ int var_save()
     return rc;
 }
 
-/** 
-* This function should be called after all dsvs are created
-* the dsv.save file should be like this
-* [123]/SYS/TEST/U16=16;[123]/SYS/TEST/U32=32;
-*@return 
-* -1: fail 
-*/
+/**
+ *
+ * This function should be called after all dsvs are created
+ * the dsv.save file should be like this
+ * [123]/SYS/TEST/U16=16;[123]/SYS/TEST/U32=32;
+ * @return
+ * -1: fail
+ */
 int var_restore()
 {
     int rc = -1;
@@ -596,11 +634,11 @@ int var_restore()
     std::string filename{ DSV_SAVE_FILE };
 
     /* read entire file into string */
-    if (std::ifstream ifs{ filename, ifs.binary | ifs.ate })
+    if( std::ifstream ifs{ filename, ifs.binary | ifs.ate } )
     {
         auto size = ifs.tellg();
         std::string save_str( size, '\0' );
-        ifs.seekg(0);
+        ifs.seekg( 0 );
         ifs.read( &save_str[0], size );
 
         int out_pos = 0; // position of after ; delimiter
@@ -638,5 +676,58 @@ int var_restore()
         std::cout << "Failed to open " << filename << std::endl;
     }
     return rc;
+}
+
+int var_track( const char *req_buf, const char *rep_buf )
+{
+    assert( req_buf );
+    printf( "Enter %s\n", __func__ );
+
+    int rc = ENOENT;
+    dsv_msg_request_t *req = (dsv_msg_request_t *)req_buf;
+    char *req_data = req->data;
+
+    dsv_msg_reply_t *rep = (dsv_msg_reply_t *)rep_buf;
+    char *rep_data = rep->data;
+    rep->length = sizeof(dsv_msg_reply_t);
+
+    int last_index = *(int *)req_data;
+    req_data += sizeof(int);
+
+    std::string search_name( req_data );
+    req_data += strlen( req_data ) + 1;
+
+    int enable_track = *(int *)req_data;
+
+    int index = -1;
+
+    for( auto[dsv_name, dsv_info]: g_map )
+    {
+        if( dsv_name.find( search_name ) != -1 )
+        {
+            if( ++index > last_index )
+            {
+                /* fill index */
+                *(int *)rep_data = index;
+                rep->length += sizeof(int);
+
+                dsv_info_t *pDsv = (dsv_info_t *)dsv_info;
+
+                if( enable_track == 1 )
+                {
+                    pDsv->flags |= DSV_FLAG_TRACK;
+                }
+                else
+                {
+                    pDsv->flags &= ~DSV_FLAG_TRACK;
+                }
+
+                rc = 0;
+                break;
+            }
+        }
+    }
+    return rc;
+
 }
 
